@@ -1,0 +1,25 @@
+# 保护 API Key
+.env
+
+# 🔒 讲师参考答案 —— 不要提交到公开仓库
+answer/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 运行时产物
+test_results.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

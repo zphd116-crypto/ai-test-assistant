@@ -1,0 +1,41 @@
+# 预置的测试用例 —— 无需修改
+# 被测系统：JSONPlaceholder (https://jsonplaceholder.typicode.com/)
+
+- id: TC001
+  name: 查询文章 1 应返回 userId=1
+  method: GET
+  url: https://jsonplaceholder.typicode.com/posts/1
+  assert_field: userId
+  expected: 1
+
+- id: TC002
+  name: 查询用户 2 应返回 username=Antonette
+  method: GET
+  url: https://jsonplaceholder.typicode.com/users/2
+  assert_field: username
+  expected: Antonette
+
+- id: TC003
+  name: 创建文章应返回 userId=99
+  method: POST
+  url: https://jsonplaceholder.typicode.com/posts
+  body:
+    title: test
+    body: ai test
+    userId: 99
+  assert_field: userId
+  expected: 99
+
+- id: TC004
+  name: 查询不存在的文章 999（预期会失败，用于演示异常处理）
+  method: GET
+  url: https://jsonplaceholder.typicode.com/posts/999
+  assert_field: id
+  expected: 999
+
+- id: TC005
+  name: 查询评论 1 应返回 email=Eliseo@gardner.biz
+  method: GET
+  url: https://jsonplaceholder.typicode.com/comments/1
+  assert_field: email
+  expected: Eliseo@gardner.biz
