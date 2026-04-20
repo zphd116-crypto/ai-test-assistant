@@ -1,12 +1,12 @@
 # AI 接口测试小助手 v1.0 · 课堂脚手架
 
-《AI 测试种子计划》第二讲 · Function Calling 实战项目。
+《AI 测试种子计划》第三讲 · Function Calling 实战项目。
 
 ---
 
 ## 这是什么？
 
-一个**"半成品"AI Agent 项目**：
+一个"半成品"AI Agent 项目：
 
 - ✅ **对话循环、LLM 调用、工具派发** —— 讲师已写好（`main.py`）
 - ⭕ **4 个工具函数 + 4 个 Schema** —— **学员要在课上补全**（`tools.py` / `schemas.py`）
