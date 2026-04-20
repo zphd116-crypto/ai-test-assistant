@@ -1,7 +1,7 @@
 """
 AI 接口测试小助手 v1.0 —— 主程序（脚手架）
 ================================================
-《AI 测试种子计划》第二讲 · Function Calling 实战
+《AI 测试种子计划》第三讲 · Function Calling 实战
 
 职责：
 - 加载 .env 中的 LLM 配置
@@ -23,11 +23,17 @@ import tools
 from schemas import TOOL_SCHEMAS
 
 
-load_dotenv()
+load_dotenv(encoding="utf-8-sig")
 
-API_KEY = os.getenv("LLM_API_KEY")
-BASE_URL = os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4/")
-MODEL = os.getenv("LLM_MODEL", "glm-4-flash")
+
+def _clean(v):
+    """剥掉 BOM + 去首尾空白，兼容 PowerShell Set-Content 写出来的 .env。"""
+    return v.lstrip("\ufeff").strip() if v else v
+
+
+API_KEY = _clean(os.getenv("LLM_API_KEY"))
+BASE_URL = _clean(os.getenv("LLM_BASE_URL")) or "https://open.bigmodel.cn/api/paas/v4/"
+MODEL = _clean(os.getenv("LLM_MODEL")) or "glm-4-flash"
 
 if not API_KEY or API_KEY.startswith("你的"):
     print("❌ 请先在 .env 中填入 LLM_API_KEY（智谱 GLM-4-Flash 免费 Key）")
@@ -35,6 +41,28 @@ if not API_KEY or API_KEY.startswith("你的"):
     sys.exit(1)
 
 client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+
+
+EXPECTED_TOOLS = ["http_request", "read_test_case", "assert_field", "save_test_log"]
+
+
+def _validate_schemas():
+    """过滤掉未补全的 Schema，返回合法列表 + 缺失名单。学员可边写边测。"""
+    valid, missing = [], []
+    for name, schema in zip(EXPECTED_TOOLS, TOOL_SCHEMAS):
+        if (
+            isinstance(schema, dict)
+            and schema.get("type") == "function"
+            and isinstance(schema.get("function"), dict)
+            and schema["function"].get("name")
+        ):
+            valid.append(schema)
+        else:
+            missing.append(name)
+    return valid, missing
+
+
+VALID_SCHEMAS, MISSING_SCHEMAS = _validate_schemas()
 
 
 TOOL_REGISTRY = {
@@ -85,11 +113,10 @@ def chat_turn(messages: list) -> str:
     """单轮对话：循环处理 tool_calls，直到 LLM 给出最终自然语言回复。"""
     max_rounds = 10
     for _ in range(max_rounds):
-        resp = client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            tools=TOOL_SCHEMAS,
-        )
+        kwargs = {"model": MODEL, "messages": messages}
+        if VALID_SCHEMAS:
+            kwargs["tools"] = VALID_SCHEMAS
+        resp = client.chat.completions.create(**kwargs)
         msg = resp.choices[0].message
         messages.append(
             {
@@ -125,7 +152,13 @@ def print_banner() -> None:
     print("🤖 AI 接口测试小助手 v1.0")
     print(f"   模型  : {MODEL}")
     print(f"   入口  : {BASE_URL}")
-    print(f"   工具数: {len(TOOL_SCHEMAS)}")
+    print(f"   工具数: {len(VALID_SCHEMAS)} / {len(EXPECTED_TOOLS)} （已补全 / 全部）")
+    if MISSING_SCHEMAS:
+        print()
+        print("⚠️  以下 Schema 还没在 schemas.py 中补全，先跳过不发给 LLM：")
+        for name in MISSING_SCHEMAS:
+            print(f"     • {name}")
+        print("    补全后重启程序即可自动接入。")
     print("=" * 60)
     print("💡 试试下面这 5 句必做对话（依次输入）：")
     print("   1. 帮我执行 TC001")
