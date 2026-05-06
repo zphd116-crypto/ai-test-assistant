@@ -19,14 +19,34 @@
 
 ### 1. 克隆仓库
 
-打开终端（Windows 用 **PowerShell** / macOS 用 **Terminal**），运行：
+打开终端（Windows 用 **PowerShell** 或 **CMD** / macOS 用 **Terminal**）。
+
+先 cd 到你想放项目的位置（比如"文档"文件夹），然后 clone：
 
 ```bash
+# 先进入你想存放项目的文件夹（按自己实际情况改路径）
+cd C:\Users\你的用户名\Documents
+
+# 克隆仓库（会自动在当前目录下创建 ai-test-assistant 文件夹）
 git clone https://github.com/zphd116-crypto/ai-test-assistant.git
+
+# 进入项目目录（⚠️ 后续所有命令都要在这个目录下执行）
 cd ai-test-assistant
 ```
 
-> 💡 如果公司网访问 GitHub 慢，请联系助教获取 zip 包或 Gitee 镜像地址。
+> ⚠️ **如果报 `'git' 不是内部或外部命令`**：
+> - 说明你的电脑没有安装独立版 Git
+> - 解决：去 [git-scm.com/download/win](https://git-scm.com/download/win) 下载安装（保持默认选项），**装完重开终端**再试
+> - 装不了？用下面的 **zip 方式**代替
+
+> 💡 **不想装 Git？直接下载 zip 也行**：
+> 1. 点本页面上方绿色 **`Code`** 按钮 → **`Download ZIP`**
+> 2. 解压到你想放的位置
+> 3. 打开终端，cd 进去：`cd 解压后的文件夹路径\ai-test-assistant-main`
+>
+> （zip 解压出来的文件夹名多了个 `-main` 后缀，注意写对）
+
+> 💡 公司网访问 GitHub 慢？联系助教获取 zip 包或 Gitee 镜像地址。
 
 ### 2. 安装依赖
 
