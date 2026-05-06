@@ -49,8 +49,8 @@ def read_test_case(case_id: str) -> dict:
 
     # 第 2 步：遍历用例列表，找到 id 匹配的那一条
     for case in cases:
-        if case["id"] == ___:       # ← 填入：要匹配的变量名是什么？
-            return ___              # ← 填入：找到了应该返回什么？
+        if case["id"] == case_id:       # ← 填入：要匹配的变量名是什么？
+            return case       # ← 填入：找到了应该返回什么？
 
     # 第 3 步：没找到，返回错误信息
     return {"error": f"用例 {case_id} 不存在"}
@@ -82,9 +82,9 @@ def http_request(method: str, url: str, body: dict | None = None) -> dict:
         if method == "GET":
             resp = requests.get(url, timeout=HTTP_TIMEOUT)
         elif method == "POST":
-            resp = requests.post(url, json=___, timeout=HTTP_TIMEOUT)    # ← 填入：POST 的请求体变量
+            resp = requests.post(url, json=body, timeout=HTTP_TIMEOUT)    # ← 填入：POST 的请求体变量
         elif method == "PUT":
-            resp = requests.put(url, json=___, timeout=HTTP_TIMEOUT)     # ← 填入：PUT 的请求体变量
+            resp = requests.put(url, json=body, timeout=HTTP_TIMEOUT)     # ← 填入：PUT 的请求体变量
         elif method == "DELETE":
             resp = requests.delete(url, timeout=HTTP_TIMEOUT)
         else:
@@ -96,7 +96,7 @@ def http_request(method: str, url: str, body: dict | None = None) -> dict:
         except ValueError:
             data = resp.text
 
-        return {"status_code": resp.status_code, "response": ___}       # ← 填入：返回的数据变量
+        return {"status_code": resp.status_code, "response": data}       # ← 填入：返回的数据变量
 
     except Exception as e:
         return {"error": f"{type(e).__name__}: {e}"}
@@ -124,7 +124,7 @@ def assert_field(response: dict, field_path: str, expected: Any) -> dict:
     # --- 骨架代码（填写 ___ 处） ---
 
     # 第 1 步：从 response 中取出要断言的字段值
-    actual = response.get(___)          # ← 填入：要从 response 里取哪个 key？
+    actual = response.get(field_path)          # ← 填入：要从 response 里取哪个 key？
 
     # 第 2 步：比较实际值和期望值（用 str 转换后比较，兼容类型差异）
     if str(actual) == str(expected):
@@ -136,7 +136,7 @@ def assert_field(response: dict, field_path: str, expected: Any) -> dict:
         }
     else:
         return {
-            "status": ___,              # ← 填入："pass" 还是 "fail"？
+            "status": "fail",              # ← 填入："pass" 还是 "fail"？
             "field": field_path,
             "actual": actual,
             "expected": expected,
@@ -172,8 +172,8 @@ def save_test_log(case_name: str, status: str, detail: str = "") -> dict:
 
     # 第 2 步：构造新的一条测试记录
     log_entry = {
-        "case_name": ___,               # ← 填入：用例名变量
-        "status": ___,                  # ← 填入：状态变量
+        "case_name": case_name,               # ← 填入：用例名变量
+        "status": status,                  # ← 填入：状态变量
         "detail": detail,
         "timestamp": datetime.now().isoformat(timespec="seconds")
     }
@@ -183,6 +183,6 @@ def save_test_log(case_name: str, status: str, detail: str = "") -> dict:
 
     # 第 4 步：写回文件
     with open(TEST_RESULT_FILE, "w", encoding="utf-8") as f:
-        json.dump(logs, ensure_ascii=False, indent=2, fp=___)   # ← 填入：写到哪个文件对象？
+        json.dump(logs, f, ensure_ascii=False, indent=2)   # json.dump(数据, 文件对象, 其他参数)
 
     return {"saved": True, "file": TEST_RESULT_FILE, "total": len(logs)}

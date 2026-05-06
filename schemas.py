@@ -59,8 +59,25 @@ HTTP_REQUEST_SCHEMA = {
 # 参数：case_id (string, 必填)
 # ==============================================================
 READ_TEST_CASE_SCHEMA = {
-    # 请在此补全，参考 HTTP_REQUEST_SCHEMA 的结构
-    # 提示：description 要写清楚"做什么"、"参数长啥样"、"返回什么"
+    "type": "function",
+    "function": {
+        "name": "read_test_case",
+        "description": (
+            "从本地 test_data.yaml 文件中读取一条测试用例的详细信息，"
+            "包括请求方法、URL、断言字段和期望值。"
+            "传入用例 ID（如 TC001），返回该用例的完整配置。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "case_id": {
+                    "type": "string",
+                    "description": "测试用例 ID，格式为 TCxxx，如 TC001、TC002、TC005",
+                }
+            },
+            "required": ["case_id"],
+        },
+    },
 }
 
 
@@ -75,7 +92,33 @@ READ_TEST_CASE_SCHEMA = {
 #                   可以写 {"type": ["string", "number", "boolean"]}
 # ==============================================================
 ASSERT_FIELD_SCHEMA = {
-    # 请在此补全
+    "type": "function",
+    "function": {
+        "name": "assert_field",
+        "description": (
+            "断言 HTTP 响应中某个字段的值是否等于期望值。"
+            "用于验证接口返回数据是否正确。"
+            "传入响应数据、字段名和期望值，返回断言通过或失败的结果。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "response": {
+                    "type": "object",
+                    "description": "http_request 返回的响应数据（response 字段的内容）",
+                },
+                "field_path": {
+                    "type": "string",
+                    "description": "要断言的字段名，如 userId、username、email",
+                },
+                "expected": {
+                    "type": ["string", "number", "boolean"],
+                    "description": "期望值，可以是字符串、数字或布尔值",
+                },
+            },
+            "required": ["response", "field_path", "expected"],
+        },
+    },
 }
 
 
@@ -89,7 +132,34 @@ ASSERT_FIELD_SCHEMA = {
 #   - detail       (string, 可选)  详细信息
 # ==============================================================
 SAVE_TEST_LOG_SCHEMA = {
-    # 请在此补全
+    "type": "function",
+    "function": {
+        "name": "save_test_log",
+        "description": (
+            "把一条测试执行结果保存到本地 test_results.json 文件。"
+            "每次调用会追加一条记录，包含用例名、通过/失败状态和详情。"
+            "用于在测试完成后记录结果。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "case_name": {
+                    "type": "string",
+                    "description": "测试用例名称，如 '查询文章 1 应返回 userId=1'",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["pass", "fail"],
+                    "description": "测试结果：pass 表示通过，fail 表示失败",
+                },
+                "detail": {
+                    "type": "string",
+                    "description": "详细信息，如断言结果或失败原因（可选）",
+                },
+            },
+            "required": ["case_name", "status"],
+        },
+    },
 }
 
 
