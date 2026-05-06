@@ -3,11 +3,10 @@
 =========================================
 目标：让学员亲眼看到 LLM 返回的原始 tool_calls 结构。
 
-讲解节奏（约 10 分钟）：
-  1. 运行一次，展示"正常调用"
-  2. 打印 resp 的原始 JSON，指出 tool_calls 字段
-  3. 故意问"今天天气怎么样"（不带城市），观察 LLM 反问
-  4. 问"上海和北京哪个热"，观察并行调用（一次返回多个 tool_call）
+3 个"啊哈时刻"：
+  1. 正常调用 → 看到 tool_calls JSON
+  2. 缺参数 → LLM 反问而不是瞎编
+  3. 并行调用 → 一次返回多个 tool_call
 
 用法：
   python demo/demo1_weather.py
@@ -25,7 +24,6 @@ client = OpenAI(
     base_url=os.getenv("LLM_BASE_URL", "https://open.bigmodel.cn/api/paas/v4/"),
 )
 MODEL = os.getenv("LLM_MODEL", "glm-4-flash")
-
 
 TOOLS = [
     {
@@ -49,22 +47,23 @@ TOOLS = [
 
 
 def mock_get_weather(city: str) -> dict:
-    """模拟一个天气 API（不真发请求，课堂演示用）"""
+    """模拟天气 API（不真发请求，课堂演示用）"""
     fake = {
         "上海": {"temp": 22, "weather": "多云"},
         "北京": {"temp": 28, "weather": "晴"},
+        "广州": {"temp": 31, "weather": "雷阵雨"},
+        "深圳": {"temp": 30, "weather": "阴"},
     }
     return fake.get(city, {"temp": 20, "weather": "未知"})
 
 
 def ask(question: str) -> None:
-    print("=" * 60)
+    print("\n" + "=" * 60)
     print(f"👤 用户: {question}")
     print("=" * 60)
 
     messages = [{"role": "user", "content": question}]
 
-    # 第一次调用：让 LLM 选工具
     resp = client.chat.completions.create(
         model=MODEL, messages=messages, tools=TOOLS
     )
@@ -77,7 +76,6 @@ def ask(question: str) -> None:
         print(f"\n🤖 LLM 直接回复（未调用工具）: {msg.content}")
         return
 
-    # 有 tool_calls，依次执行
     messages.append(msg.model_dump(exclude_unset=True))
     for tc in msg.tool_calls:
         args = json.loads(tc.function.arguments or "{}")
@@ -92,19 +90,45 @@ def ask(question: str) -> None:
             }
         )
 
-    # 第二次调用：让 LLM 把结果组织成人话
     resp2 = client.chat.completions.create(model=MODEL, messages=messages, tools=TOOLS)
     print(f"\n🤖 LLM 最终回复: {resp2.choices[0].message.content}")
 
 
+def main():
+    print("=" * 60)
+    print("🌤️  天气 Demo —— 体验 Function Calling")
+    print("=" * 60)
+    print()
+    print("预设问题（输入数字直接体验）：")
+    print("  1. 上海今天天气怎么样？        → 正常调用，观察 tool_calls")
+    print("  2. 今天天气怎么样？            → 缺参数，观察 LLM 反问")
+    print("  3. 上海和北京哪个更热？        → 并行调用，观察多个 tool_call")
+    print()
+    print("也可以直接输入你自己的问题，输入 quit 退出")
+    print("=" * 60)
+
+    presets = {
+        "1": "上海今天天气怎么样？",
+        "2": "今天天气怎么样？",
+        "3": "上海和北京哪个更热？",
+    }
+
+    while True:
+        try:
+            user_input = input("\n>>> 选择(1/2/3) 或输入问题: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n👋 再见")
+            break
+
+        if not user_input:
+            continue
+        if user_input.lower() in ("quit", "exit", "q"):
+            print("👋 再见")
+            break
+
+        question = presets.get(user_input, user_input)
+        ask(question)
+
+
 if __name__ == "__main__":
-    # 👇 依次解除注释即可看到 3 个"啊哈时刻"
-
-    # 啊哈 1：正常调用，看到原始 tool_calls JSON
-    ask("上海今天天气怎么样？")
-
-    # 啊哈 2：缺参数，LLM 会主动反问，不会瞎编
-    # ask("今天天气怎么样？")
-
-    # 啊哈 3：并行调用，一次返回多个 tool_call
-    # ask("上海和北京哪个更热？")
+    main()
