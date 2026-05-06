@@ -1,4 +1,4 @@
-# AI 接口测试小助手 v1.0 · 课堂脚手架
+﻿# AI 接口测试小助手 v1.0 · 课堂脚手架
 
 《AI 测试种子计划》第三讲 · Function Calling 实战项目。
 
@@ -172,9 +172,9 @@ ai-test-assistant/
 ├── test_key.py          # ✅ API Key 验证脚本
 ├── requirements.txt     # 依赖清单
 ├── .env.example         # API Key 配置模板
-├── demo/                # 讲师课堂演示代码（学员无需修改）
-│   ├── demo1_weather.py
-│   └── demo2_jsonplaceholder.py
+├── demo/                # 讲师课堂演示代码
+│   ├── demo1_weather.py     # 天气查询（mock）—— 理解 tool_calls
+│   └── demo2_jsonplaceholder.py  # 真实 API 调用
 ├── .gitignore
 └── README.md            # 本文件
 ```
@@ -182,6 +182,27 @@ ai-test-assistant/
 ---
 
 ## 课堂任务清单
+
+### 热身：体验天气 Demo（5 分钟）
+
+在开始补全代码之前，先运行一个最简单的 Function Calling 示例，感受 LLM 是如何"选工具"的：
+
+```bash
+python demo/demo1_weather.py
+```
+
+观察输出中的 `tool_calls` JSON 结构 —— 这就是 Function Calling 的核心：
+- `content: null` → LLM 没有直接回答，而是"建议调用工具"
+- `function.name` → LLM 选了哪个工具
+- `function.arguments` → LLM 自动从用户问题中提取的参数
+
+> 💡 想看更多效果？打开 `demo/demo1_weather.py`，把底部的注释逐个解开再运行：
+> - 啊哈 2：故意不说城市名，观察 LLM 会反问而不是瞎编
+> - 啊哈 3：问"上海和北京哪个热"，观察 LLM 一次返回多个 tool_call（并行调用）
+
+理解了这个流程，接下来的实操就容易多了。
+
+---
 
 ### 步骤一：补全 `tools.py`（4 个函数）
 
@@ -216,10 +237,14 @@ ai-test-assistant/
 
 课后在班级群提交：
 
+**必做：**
 - [ ] `tools.py` + `schemas.py`（补全后的代码）
 - [ ] 5 条对话的运行截图（或文本日志）
 - [ ] 生成的 `test_results.json`
-- [ ] （作业二）把 URL 换成自己业务的接口后，再跑 3 条对话
+
+**选做（加分项）：**
+- [ ] 把 `test_data.yaml` 的 URL 换成自己业务的接口，跑通 3 条对话
+- [ ] 列出你业务线上 3 个可以封装为工具的测试动作，写出对应 Schema
 
 ---
 
@@ -234,6 +259,7 @@ ai-test-assistant/
 | **`.env` 配了 Key 但程序说没配** | 可能是 BOM 编码问题，用记事本/Cursor 重新编辑保存 `.env` |
 | **PowerShell 卡住不动** | 可能进入"选择模式"，按 `Esc` 键恢复（详见课前教程 Q8） |
 | **中文乱码** | PowerShell 先运行 `chcp 65001`，或使用 Cursor/VSCode 内置终端 |
+| **报"达到最大工具调用轮数"** | 免费模型处理长链路能力有限。改为一次执行 2-3 个用例（如"执行 TC001 和 TC002"），或用更明确的指令（如"重新跑 TC004"） |
 
 ---
 
