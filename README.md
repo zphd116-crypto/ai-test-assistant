@@ -63,12 +63,17 @@ pip install -r requirements.txt
 确保你在项目目录下（上一步 `cd ai-test-assistant` 后就是），运行：
 
 ```bash
+# Windows CMD（命令提示符）
+copy .env.example .env
+
 # Windows PowerShell
 Copy-Item .env.example .env
 
 # macOS / Linux
 cp .env.example .env
 ```
+
+> 💡 **怎么区分 CMD 和 PowerShell？** 看窗口标题栏——写着"命令提示符"就是 CMD，写着"PowerShell"就是 PowerShell。不确定的话，两条都试一下，总有一条能成功。
 
 #### 第二步：编辑 `.env` 文件，填入你的 Key
 
