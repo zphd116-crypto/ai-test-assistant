@@ -19,30 +19,81 @@
 
 ### 1. 克隆仓库
 
+打开终端（Windows 用 **PowerShell** / macOS 用 **Terminal**），运行：
+
 ```bash
-git clone <课前通知里的仓库地址> ai-test-assistant
+git clone https://github.com/zphd116-crypto/ai-test-assistant.git
 cd ai-test-assistant
 ```
 
-### 2. 装依赖
+> 💡 如果公司网访问 GitHub 慢，请联系助教获取 zip 包或 Gitee 镜像地址。
+
+### 2. 安装依赖
 
 ```bash
 pip install -r requirements.txt
-# 下载慢可加清华镜像：-i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-### 3. 配 API Key
+> 下载慢可加清华镜像：`pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple`
+
+### 3. 配置 API Key（重点步骤）
+
+#### 第一步：复制配置文件
+
+确保你在项目目录下（上一步 `cd ai-test-assistant` 后就是），运行：
 
 ```bash
-# Windows
+# Windows PowerShell
 Copy-Item .env.example .env
+
 # macOS / Linux
 cp .env.example .env
 ```
 
-打开 `.env`，把 `LLM_API_KEY` 换成你自己的**智谱 GLM-4-Flash Key**（[申请入口](https://open.bigmodel.cn/)，永久免费）。
+#### 第二步：编辑 `.env` 文件，填入你的 Key
 
-### 4. 跑起来（此时只有空壳，会报 NotImplementedError，属正常）
+用**以下任一方式**打开 `.env` 文件：
+
+```bash
+# 方式 A：用记事本打开（Windows 最简单）
+notepad .env
+
+# 方式 B：用 Cursor 打开
+cursor .env
+
+# 方式 C：用 VSCode 打开
+code .env
+
+# 方式 D：直接在 Cursor / VSCode 侧边栏找到 .env 文件，双击打开
+```
+
+打开后你会看到：
+
+```
+LLM_API_KEY=你的智谱Key粘贴在这里
+LLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4/
+LLM_MODEL=glm-4-flash
+```
+
+**只需修改第一行**：把 `你的智谱Key粘贴在这里` 替换成你自己的智谱 Key（形如 `xxxxxxxx.yyyyyyyy`），保存关闭。
+
+> 🔑 还没有 Key？去 [智谱开放平台](https://open.bigmodel.cn/) 注册，免费获取 GLM-4-Flash API Key（详见《课前准备_环境配置教程.md》第三节）。
+
+> ⚠️ **Windows 用户请不要用 PowerShell 的 `echo` 或 `Set-Content` 写 .env 文件**，可能产生编码问题。用记事本/Cursor/VSCode 编辑最稳妥。
+
+### 4. 验证 Key 可用
+
+```bash
+python test_key.py
+```
+
+看到模型返回一段文字 = ✅ **Key 配置正确**。
+
+如果报错，请检查：
+- `.env` 里的 Key 是否粘贴完整（不能有多余空格）
+- 网络是否能访问 `open.bigmodel.cn`
+
+### 5. 启动脚手架
 
 ```bash
 python main.py
@@ -55,12 +106,19 @@ python main.py
 🤖 AI 接口测试小助手 v1.0
    模型  : glm-4-flash
    入口  : https://open.bigmodel.cn/api/paas/v4/
-   工具数: 4
+   工具数: 1 / 4 （已补全 / 全部）
+
+⚠️  以下 Schema 还没在 schemas.py 中补全，先跳过不发给 LLM：
+     • read_test_case
+     • assert_field
+     • save_test_log
 ============================================================
 >>> 请输入指令:
 ```
 
-**出现这个提示符 = ✅ 环境就绪**，课堂上按讲师节奏补全 4 个工具即可。
+**出现 `>>> 请输入指令:` = ✅ 环境就绪**，课堂上按讲师节奏补全 4 个工具即可。
+
+> 💡 此时工具数显示 `1 / 4` 是正常的 —— 讲师只写好了 1 个样板（`http_request`），另外 3 个由你在课上补全。
 
 ---
 
@@ -72,8 +130,12 @@ ai-test-assistant/
 ├── tools.py             # ⭕ 学员要填：4 个工具函数（带 TODO 提示）
 ├── schemas.py           # ⭕ 学员要填：4 个 Schema（含 1 个样板）
 ├── test_data.yaml       # ✅ 讲师写好：5 条测试用例
+├── test_key.py          # ✅ API Key 验证脚本
 ├── requirements.txt     # 依赖清单
 ├── .env.example         # API Key 配置模板
+├── demo/                # 讲师课堂演示代码（学员无需修改）
+│   ├── demo1_weather.py
+│   └── demo2_jsonplaceholder.py
 ├── .gitignore
 └── README.md            # 本文件
 ```
@@ -124,10 +186,15 @@ ai-test-assistant/
 
 ## 常见问题
 
-- **报 NotImplementedError** → 说明对应工具还没实现，按 TODO 提示补即可。
-- **API 401 / 余额不足** → 换备选 Key（见 `.env.example` 注释里其他配置）。
-- **LLM 不调用工具，只回答了文字** → 多半是 Schema 的 `description` 写得不够清楚；重读模块二的 5 条黄金法则。
-- **中文乱码** → Windows PowerShell 先运行 `chcp 65001`。
+| 问题 | 解决方案 |
+|------|---------|
+| **报 `NotImplementedError`** | 正常，说明对应工具还没实现，按 TODO 提示补即可 |
+| **报 `ModuleNotFoundError: No module named 'xxx'`** | 重新运行 `pip install -r requirements.txt` |
+| **API 401 / Key 无效** | 检查 `.env` 里 Key 是否完整，或换备选配置（见 `.env.example` 注释） |
+| **LLM 不调用工具，只回答文字** | Schema 的 `description` 写得不够清楚，重读模块二的 5 条黄金法则 |
+| **`.env` 配了 Key 但程序说没配** | 可能是 BOM 编码问题，用记事本/Cursor 重新编辑保存 `.env` |
+| **PowerShell 卡住不动** | 可能进入"选择模式"，按 `Esc` 键恢复（详见课前教程 Q8） |
+| **中文乱码** | PowerShell 先运行 `chcp 65001`，或使用 Cursor/VSCode 内置终端 |
 
 ---
 
