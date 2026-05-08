@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgenticAI 与 Function Calling - AI 测试种子计划 第三讲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', '-apple-system', 'BlinkMacSystemFont', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: #000;
+            color: #e2e8f0;
+            margin: 0;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #slide-deck {
+            width: 100%;
+            max-width: 177.78vh;
+            aspect-ratio: 16/9;
+            position: relative;
+            background-color: #0a0f1a;
+            box-shadow: 0 0 100px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 2.5rem 3rem;
+            box-sizing: border-box;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+            z-index: 10;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #a78bfa, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-text-warm {
+            background: linear-gradient(135deg, #f97316, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-text-green {
+            background: linear-gradient(135deg, #34d399, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-text-gold {
+            background: linear-gradient(135deg, #fbbf24, #f97316);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-glass {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .code-font { font-family: 'JetBrains Mono', monospace; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes glow-pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(167,139,250,0.3); }
+            50% { box-shadow: 0 0 40px rgba(167,139,250,0.6); }
+        }
+        @keyframes dash-flow {
+            to { stroke-dashoffset: -20; }
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        @keyframes spin-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-glow { animation: glow-pulse 2s ease-in-out infinite; }
+        .animate-spin-slow { animation: spin-slow 20s linear infinite; }
+        .flow-arrow { stroke-dasharray: 6 4; animation: dash-flow 1s linear infinite; }
+
+        .slide-nav {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 50;
+        }
+        .slide-nav .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .slide-nav .dot.active {
+            background: #a78bfa;
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        .slide-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(31, 41, 55, 0.8);
+            padding-bottom: 0.75rem;
+        }
+
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+
+        /* 代码块样式 */
+        .code-block {
+            background: #0d1424;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .code-comment { color: #64748b; }
+        .code-keyword { color: #c084fc; }
+        .code-string { color: #34d399; }
+        .code-fn { color: #60a5fa; }
+        .code-key { color: #fbbf24; }
+
+        /* 流程节点 */
+        .flow-node {
+            background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(56,189,248,0.15));
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s;
+        }
+        .flow-node:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(167,139,250,0.2); }
+
+        /* 对话气泡 */
+        .chat-bubble-user {
+            background: linear-gradient(135deg, #a78bfa, #818cf8);
+            color: white;
+            border-radius: 16px 16px 4px 16px;
+            padding: 8px 14px;
+            font-size: 13px;
+            max-width: 80%;
+            margin-left: auto;
+        }
+        .chat-bubble-bot {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px 16px 16px 4px;
+            padding: 8px 14px;
+            font-size: 13px;
+            max-width: 80%;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<div id="slide-deck">
+
+    <!-- ============================================================ -->
+    <!-- Slide 1: 封面 -->
+    <!-- ============================================================ -->
+    <div class="slide active flex-col items-center justify-center relative" id="slide-1">
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] border border-white/[0.03] rounded-full"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border border-white/[0.05] rounded-full"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] border border-purple-500/[0.08] rounded-full animate-spin-slow"></div>
+        </div>
+
+        <div class="flex flex-col items-center z-10 gap-5">
+            <div class="badge bg-purple-500/10 text-purple-300 border border-purple-500/30 px-4 py-1 text-xs">
+                <i class="fas fa-graduation-cap"></i>
+                <span>AI 测试种子计划 · 第三讲</span>
+            </div>
+
+            <div class="flex items-center gap-4 mt-2">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-2xl shadow-lg animate-glow">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <span class="text-gray-500 text-3xl font-light">+</span>
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-2xl shadow-lg">
+                    <i class="fas fa-link"></i>
+                </div>
+                <span class="text-gray-500 text-3xl font-light">=</span>
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-white text-2xl shadow-lg">
+                    <i class="fas fa-robot"></i>
+                </div>
+            </div>
+
+            <h1 class="text-6xl font-black text-center leading-tight mt-2">
+                AgenticAI 与 <span class="gradient-text">Function Calling</span>
+            </h1>
+
+            <p class="text-xl text-gray-400 text-center max-w-3xl leading-relaxed">
+                理解智能体如何<span class="text-white font-semibold">连接物理世界</span>
+            </p>
+
+            <div class="mt-4 card-glass px-8 py-4 rounded-2xl border border-purple-500/20">
+                <p class="text-gray-300 text-center text-base">
+                    <i class="fas fa-quote-left text-purple-400 mr-2 text-xs"></i>
+                    Chatbot 是"AI 告诉你怎么做"，Agent 是"AI 直接帮你做完"
+                    <i class="fas fa-quote-right text-purple-400 ml-2 text-xs"></i>
+                </p>
+            </div>
+
+            <div class="mt-6 flex gap-4 text-xs text-gray-500">
+                <span class="flex items-center gap-1.5"><i class="fas fa-clock text-purple-400"></i> 时长 2 小时</span>
+                <span class="text-gray-700">|</span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-users text-blue-400"></i> 研发测试部</span>
+                <span class="text-gray-700">|</span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-laptop-code text-green-400"></i> 学完即用</span>
+            </div>
+        </div>
+
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-gray-600 text-xs flex items-center gap-2 animate-float">
+            <i class="fas fa-arrow-right"></i> 按方向键 / 空格 翻页
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 2: 课程目标 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-2">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-bullseye mr-2"></i>课程目标</h1>
+            <span class="text-sm text-gray-600">02 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-4xl font-bold mb-2 text-center">学完后，你将能够 <span class="gradient-text">动手做 AI</span></h2>
+            <p class="text-gray-500 text-center mb-10">不只是听懂概念，而是真正把 AI 用到测试工作里</p>
+
+            <div class="grid grid-cols-4 gap-5">
+                <div class="card-glass rounded-2xl p-6 border-t-4 border-purple-500/60 hover:border-purple-500 transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/15 flex items-center justify-center mb-4">
+                        <i class="fas fa-lightbulb text-purple-400 text-xl"></i>
+                    </div>
+                    <div class="text-xs text-purple-400 font-bold mb-1">认知层</div>
+                    <h3 class="text-base font-bold text-gray-100 mb-2">看懂 Agent</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed">理解从 Chatbot（被动对话）到 Agent（主动行动）的范式转变</p>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6 border-t-4 border-blue-500/60 hover:border-blue-500 transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/15 flex items-center justify-center mb-4">
+                        <i class="fas fa-cogs text-blue-400 text-xl"></i>
+                    </div>
+                    <div class="text-xs text-blue-400 font-bold mb-1">原理层</div>
+                    <h3 class="text-base font-bold text-gray-100 mb-2">吃透 FC</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed">深度掌握 Function Calling 原理，理解 LLM 如何把"人话"翻译成"代码指令"</p>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6 border-t-4 border-cyan-500/60 hover:border-cyan-500 transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/15 flex items-center justify-center mb-4">
+                        <i class="fas fa-laptop-code text-cyan-400 text-xl"></i>
+                    </div>
+                    <div class="text-xs text-cyan-400 font-bold mb-1">实战层</div>
+                    <h3 class="text-base font-bold text-gray-100 mb-2">写出 Demo</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed">能借助原生 API 实现一个"会动手"的工具调用 Demo</p>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6 border-t-4 border-green-500/60 hover:border-green-500 transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-green-500/15 flex items-center justify-center mb-4">
+                        <i class="fas fa-rocket text-green-400 text-xl"></i>
+                    </div>
+                    <div class="text-xs text-green-400 font-bold mb-1">落地层</div>
+                    <h3 class="text-base font-bold text-gray-100 mb-2">用到工作</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed">能设计"测试场景下的 Agent 工具集"，1 周内业务落地</p>
+                </div>
+            </div>
+
+            <div class="mt-10 flex justify-center">
+                <div class="card-glass rounded-xl px-8 py-3 border border-purple-500/20 inline-flex items-center gap-3">
+                    <i class="fas fa-clock text-purple-400"></i>
+                    <span class="text-sm text-gray-400">课程结构：</span>
+                    <span class="text-xs text-gray-300">范式认知 <span class="text-gray-600">20'</span></span>
+                    <i class="fas fa-chevron-right text-gray-600 text-xs"></i>
+                    <span class="text-xs text-gray-300">原理拆解 <span class="text-gray-600">30'</span></span>
+                    <i class="fas fa-chevron-right text-gray-600 text-xs"></i>
+                    <span class="text-xs text-gray-300">现场 Demo <span class="text-gray-600">25'</span></span>
+                    <i class="fas fa-chevron-right text-gray-600 text-xs"></i>
+                    <span class="text-xs gradient-text font-bold">实战演练 <span>35'</span></span>
+                    <i class="fas fa-chevron-right text-gray-600 text-xs"></i>
+                    <span class="text-xs text-gray-300">总结答疑 <span class="text-gray-600">10'</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 3: 痛点引入 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-3">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-fire mr-2"></i>模块一 · 引入</h1>
+            <span class="text-sm text-gray-600">03 / 20</span>
+        </div>
+
+        <div class="flex-1 flex gap-10 items-center">
+            <div class="w-1/2">
+                <div class="text-sm text-gray-500 mb-2">先聊聊你的日常</div>
+                <h2 class="text-5xl font-black leading-tight mb-6">
+                    每天都在做<br>
+                    这些<span class="gradient-text-warm">重复劳动</span>？
+                </h2>
+                <div class="space-y-3">
+                    <div class="card-glass rounded-xl p-4 border-l-4 border-orange-500/60 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
+                            <i class="fas fa-file-pen text-orange-400 text-sm"></i>
+                        </div>
+                        <span class="text-sm text-gray-300">写测试用例 → 执行 → 提 Bug → 回归 → 写报告</span>
+                    </div>
+                    <div class="card-glass rounded-xl p-4 border-l-4 border-yellow-500/60 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-yellow-500/15 flex items-center justify-center">
+                            <i class="fas fa-network-wired text-yellow-400 text-sm"></i>
+                        </div>
+                        <span class="text-sm text-gray-300">看接口文档 → 构造参数 → 调接口 → 校验结果</span>
+                    </div>
+                    <div class="card-glass rounded-xl p-4 border-l-4 border-red-500/60 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
+                            <i class="fas fa-chart-line text-red-400 text-sm"></i>
+                        </div>
+                        <span class="text-sm text-gray-300">查日志 → 定位问题 → 重跑 → 写日报</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-1/2 flex flex-col items-center">
+                <div class="card-glass rounded-3xl p-8 border border-purple-500/30 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl"></div>
+                    <div class="text-center relative z-10">
+                        <i class="fas fa-question text-purple-400 text-4xl mb-4"></i>
+                        <p class="text-gray-400 text-base mb-3">如果有一个</p>
+                        <p class="text-3xl font-bold gradient-text mb-3">"懂业务的实习生"</p>
+                        <p class="text-gray-400 text-base mb-4">能帮你做这些</p>
+                        <p class="text-xl text-white font-bold">他需要具备什么能力？</p>
+                    </div>
+                </div>
+
+                <div class="mt-6 text-center">
+                    <p class="text-sm text-gray-500">
+                        <i class="fas fa-arrow-down text-purple-400 mr-2"></i>
+                        这个"实习生"，今天我们就来造一个
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 4: Chatbot vs Agent 三场景对比 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-4">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-balance-scale mr-2"></i>模块一 · Chatbot 时代的局限</h1>
+            <span class="text-sm text-gray-600">04 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center">三个场景，看清 <span class="gradient-text-warm">Chatbot</span> 与 <span class="gradient-text">Agent</span> 的根本差距</h2>
+            <p class="text-gray-500 text-center text-sm mb-8">同样的提问，截然不同的结果</p>
+
+            <div class="grid grid-cols-3 gap-5">
+                <!-- 场景 1 -->
+                <div class="card-glass rounded-2xl p-5 border border-gray-700/40">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-full bg-blue-500/15 flex items-center justify-center">
+                            <i class="fas fa-cloud-sun text-blue-400 text-sm"></i>
+                        </div>
+                        <span class="text-xs text-gray-400">场景 1：实时数据</span>
+                    </div>
+                    <p class="text-sm text-gray-200 mb-4 font-semibold">"上海今天天气怎么样？"</p>
+                    <div class="space-y-3">
+                        <div class="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i class="fas fa-times-circle text-red-400 text-xs"></i>
+                                <span class="text-xs text-red-400 font-bold">Chatbot</span>
+                            </div>
+                            <p class="text-xs text-gray-400">"抱歉无法获取实时信息"</p>
+                        </div>
+                        <div class="bg-green-500/5 border border-green-500/20 rounded-lg p-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i class="fas fa-check-circle text-green-400 text-xs"></i>
+                                <span class="text-xs text-green-400 font-bold">Agent</span>
+                            </div>
+                            <p class="text-xs text-gray-400">调用天气 API → "22 度，多云"</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 场景 2 -->
+                <div class="card-glass rounded-2xl p-5 border border-purple-500/40 transform scale-105 shadow-2xl shadow-purple-500/10">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-full bg-purple-500/15 flex items-center justify-center">
+                            <i class="fas fa-vial text-purple-400 text-sm"></i>
+                        </div>
+                        <span class="text-xs text-purple-300">场景 2：测试同学专属</span>
+                        <span class="ml-auto badge bg-purple-500/20 text-purple-300">最相关</span>
+                    </div>
+                    <p class="text-sm text-gray-200 mb-4 font-semibold">"查昨天的回归通过率"</p>
+                    <div class="space-y-3">
+                        <div class="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i class="fas fa-times-circle text-red-400 text-xs"></i>
+                                <span class="text-xs text-red-400 font-bold">Chatbot</span>
+                            </div>
+                            <p class="text-xs text-gray-400">"你可以这样操作：第一步…"</p>
+                        </div>
+                        <div class="bg-green-500/5 border border-green-500/20 rounded-lg p-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i class="fas fa-check-circle text-green-400 text-xs"></i>
+                                <span class="text-xs text-green-400 font-bold">Agent</span>
+                            </div>
+                            <p class="text-xs text-gray-400">调 Jenkins API → "92.5%，3 条失败"</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 场景 3 -->
+                <div class="card-glass rounded-2xl p-5 border border-gray-700/40">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-full bg-cyan-500/15 flex items-center justify-center">
+                            <i class="fas fa-redo text-cyan-400 text-sm"></i>
+                        </div>
+                        <span class="text-xs text-gray-400">场景 3：完成任务</span>
+                    </div>
+                    <p class="text-sm text-gray-200 mb-4 font-semibold">"把上周失败用例重跑"</p>
+                    <div class="space-y-3">
+                        <div class="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i class="fas fa-times-circle text-red-400 text-xs"></i>
+                                <span class="text-xs text-red-400 font-bold">Chatbot</span>
+                            </div>
+                            <p class="text-xs text-gray-400">"建议你登录平台手动触发…"</p>
+                        </div>
+                        <div class="bg-green-500/5 border border-green-500/20 rounded-lg p-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <i class="fas fa-check-circle text-green-400 text-xs"></i>
+                                <span class="text-xs text-green-400 font-bold">Agent</span>
+                            </div>
+                            <p class="text-xs text-gray-400">筛选 → 触发 → 反馈，全程自动</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex justify-center">
+                <p class="text-base text-gray-300">
+                    核心差距：<span class="text-red-400">Chatbot 只会"动嘴"</span>　·　<span class="gradient-text font-bold">Agent 会"动手"</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 5: Agent 公式 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-5">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-puzzle-piece mr-2"></i>模块一 · Agent 的本质</h1>
+            <span class="text-sm text-gray-600">05 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center items-center">
+            <p class="text-gray-500 mb-4">什么是 Agent？一个公式说清楚</p>
+            <h2 class="text-4xl font-bold mb-10 text-center">
+                <span class="gradient-text">Agent</span> = <span class="text-gray-400">LLM + Tools + Memory + Planning</span>
+            </h2>
+
+            <div class="grid grid-cols-4 gap-6 w-full max-w-5xl">
+                <div class="card-glass rounded-2xl p-6 border border-purple-500/30 text-center hover:border-purple-500 transition-all">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-700/20 mx-auto mb-3 flex items-center justify-center text-3xl">
+                        🧠
+                    </div>
+                    <div class="text-sm font-bold text-purple-300 mb-1">LLM</div>
+                    <div class="text-xs text-gray-500 mb-2">大脑</div>
+                    <p class="text-xs text-gray-400 leading-relaxed">负责思考、决策、理解意图</p>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6 border-2 border-blue-500/50 text-center hover:border-blue-500 transition-all relative">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 badge bg-blue-500 text-white px-3 py-1">
+                        <i class="fas fa-star text-xs"></i> 今天的主角
+                    </div>
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 mx-auto mb-3 flex items-center justify-center text-3xl">
+                        ✋
+                    </div>
+                    <div class="text-sm font-bold text-blue-300 mb-1">Tools</div>
+                    <div class="text-xs text-gray-500 mb-2">手脚</div>
+                    <p class="text-xs text-gray-400 leading-relaxed">通过 Function Calling 调 API、操作数据库</p>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6 border border-green-500/30 text-center hover:border-green-500 transition-all">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/20 to-teal-500/20 mx-auto mb-3 flex items-center justify-center text-3xl">
+                        📒
+                    </div>
+                    <div class="text-sm font-bold text-green-300 mb-1">Memory</div>
+                    <div class="text-xs text-gray-500 mb-2">记忆</div>
+                    <p class="text-xs text-gray-400 leading-relaxed">记住上下文、历史对话、长期偏好</p>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6 border border-orange-500/30 text-center hover:border-orange-500 transition-all">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500/20 to-pink-500/20 mx-auto mb-3 flex items-center justify-center text-3xl">
+                        🗺️
+                    </div>
+                    <div class="text-sm font-bold text-orange-300 mb-1">Planning</div>
+                    <div class="text-xs text-gray-500 mb-2">规划</div>
+                    <p class="text-xs text-gray-400 leading-relaxed">把复杂任务拆成多个步骤逐一执行</p>
+                </div>
+            </div>
+
+            <div class="mt-10 card-glass px-8 py-4 rounded-2xl border border-purple-500/20 max-w-3xl">
+                <p class="text-center text-gray-300 text-sm">
+                    <i class="fas fa-lightbulb text-yellow-400 mr-2"></i>
+                    <span class="text-white font-semibold">今天我们重点讲"手脚是怎么长出来的"</span>——也就是 <span class="gradient-text font-bold">Function Calling</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 6: FC 无处不在 — 你每天都在用 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-6">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-globe mr-2"></i>模块一 · Function Calling 无处不在</h1>
+            <span class="text-sm text-gray-600">06 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center">你每天用的 AI 工具，<span class="gradient-text">本质都是 Function Calling</span></h2>
+            <p class="text-gray-500 text-sm text-center mb-8">今天学的不是玩具，是工业级技术的核心原理</p>
+
+            <div class="grid grid-cols-3 gap-5 mb-8">
+                <div class="card-glass rounded-2xl p-5 border border-purple-500/20 text-center">
+                    <div class="text-3xl mb-3">🖥️</div>
+                    <h3 class="text-base font-bold text-gray-100 mb-2">Cursor / Copilot</h3>
+                    <div class="space-y-1.5 text-left">
+                        <div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-wrench text-purple-400 text-[10px]"></i> 读文件、写文件、搜索代码、运行终端</div>
+                        <div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-file-alt text-purple-400 text-[10px]"></i> 内置 Schema 定义每个工具</div>
+                        <div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-brain text-purple-400 text-[10px]"></i> Claude/GPT 决定调哪个</div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-5 border border-cyan-500/20 text-center">
+                    <div class="text-3xl mb-3">🤖</div>
+                    <h3 class="text-base font-bold text-gray-100 mb-2">Claude Code</h3>
+                    <div class="space-y-1.5 text-left">
+                        <div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-wrench text-cyan-400 text-[10px]"></i> 读文件、写文件、执行 bash</div>
+                        <div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-file-alt text-cyan-400 text-[10px]"></i> Anthropic 定义的 Tool Schema</div>
+                        <div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-brain text-cyan-400 text-[10px]"></i> Claude 决定调哪个</div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-5 border border-green-500/20 text-center">
+                    <div class="text-3xl mb-3">💬</div>
+                    <h3 class="text-base font-bold text-gray-100 mb-2">ChatGPT 联网搜索</h3>
+                    <div class="space-y-1.5 text-left">
+                        <div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-wrench text-green-400 text-[10px]"></i> 搜索网页、运行 Python、画图</div>
+                        <div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-file-alt text-green-400 text-[10px]"></i> OpenAI 内置的 tools 定义</div>
+                        <div class="flex items-center gap-2 text-xs text-gray-400"><i class="fas fa-brain text-green-400 text-[10px]"></i> GPT 决定调哪个</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-glass rounded-2xl p-5 border border-yellow-500/30 max-w-4xl mx-auto">
+                <div class="flex items-center gap-3 mb-3">
+                    <i class="fas fa-equals text-yellow-400 text-xl"></i>
+                    <h3 class="text-lg font-bold text-yellow-300">和你们今天要做的，架构完全一样</h3>
+                </div>
+                <div class="grid grid-cols-4 gap-3 text-center text-xs">
+                    <div class="bg-yellow-500/5 border border-yellow-500/15 rounded-lg p-2.5">
+                        <div class="text-yellow-300 font-bold mb-1">Cursor 说</div>
+                        <div class="text-gray-400">"帮我重构这个函数"</div>
+                    </div>
+                    <div class="bg-yellow-500/5 border border-yellow-500/15 rounded-lg p-2.5">
+                        <div class="text-yellow-300 font-bold mb-1">LLM 决定</div>
+                        <div class="text-gray-400">调 read_file → edit_file</div>
+                    </div>
+                    <div class="bg-yellow-500/5 border border-yellow-500/15 rounded-lg p-2.5">
+                        <div class="text-yellow-300 font-bold mb-1">你们的小助手说</div>
+                        <div class="text-gray-400">"执行 TC001"</div>
+                    </div>
+                    <div class="bg-yellow-500/5 border border-yellow-500/15 rounded-lg p-2.5">
+                        <div class="text-yellow-300 font-bold mb-1">LLM 决定</div>
+                        <div class="text-gray-400">调 read_case → http_request</div>
+                    </div>
+                </div>
+                <p class="text-gray-500 text-xs mt-3 text-center">唯一的区别：Tools 的丰富程度和工程化程度。<span class="text-white font-semibold">原理完全一致。</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 7: AI 测试前沿生态 — 硅谷正在发生什么 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-7">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-satellite mr-2"></i>模块一 · 前沿速递</h1>
+            <span class="text-sm text-gray-600">07 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center">硅谷正在发生什么？<span class="gradient-text">AI 测试生态爆发</span></h2>
+            <p class="text-gray-500 text-sm text-center mb-6">2025-2026 年，Function Calling 正在重塑整个测试行业</p>
+
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <!-- Playwright MCP -->
+                <div class="card-glass rounded-xl p-4 border border-cyan-500/20">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center">
+                            <i class="fas fa-theater-masks text-cyan-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-cyan-300">Playwright MCP</h4>
+                            <span class="text-[10px] text-gray-500">Microsoft · 25k+ Stars</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 leading-relaxed">AI Agent 直接控制浏览器做 E2E 测试。用自然语言描述测试步骤，Agent 自动操作页面、断言结果。已内置到 Cursor、Claude Code、VS Code。</p>
+                </div>
+
+                <!-- OpenAI Agents SDK -->
+                <div class="card-glass rounded-xl p-4 border border-green-500/20">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center">
+                            <i class="fas fa-robot text-green-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-green-300">OpenAI Agents SDK</h4>
+                            <span class="text-[10px] text-gray-500">开源 · Python + TypeScript</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 leading-relaxed">OpenAI 官方开源的 Agent 框架。内置 Tool 调用循环、沙箱执行、Guardrails 输入校验 —— 和你们今天学的 main.py 循环是一个思路，只是工程化更完善。</p>
+                </div>
+
+                <!-- MCP 生态 -->
+                <div class="card-glass rounded-xl p-4 border border-purple-500/20">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center">
+                            <i class="fas fa-plug text-purple-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-purple-300">MCP 协议生态</h4>
+                            <span class="text-[10px] text-gray-500">Anthropic · 标准协议</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 leading-relaxed">Model Context Protocol —— AI 连接外部工具的通用标准。已有 Jira、Jenkins、数据库、Playwright 等 MCP Server。<span class="text-purple-300">本质就是标准化的 Schema + Function。</span></p>
+                </div>
+
+                <!-- browser-use / AI QA -->
+                <div class="card-glass rounded-xl p-4 border border-orange-500/20">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
+                            <i class="fas fa-globe text-orange-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-orange-300">AI QA 创业潮</h4>
+                            <span class="text-[10px] text-gray-500">QA Wolf · Momentic · Testim</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-400 leading-relaxed">大量硅谷创业公司用 Agent 替代手工测试。核心技术栈：LLM + Function Calling + 浏览器自动化。年融资超 $200M。<span class="text-orange-300">测试是 Agent 最早落地的领域之一。</span></p>
+                </div>
+            </div>
+
+            <div class="card-glass rounded-xl p-3 border border-yellow-500/30 max-w-4xl mx-auto">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-lightbulb text-yellow-400"></i>
+                    <p class="text-xs text-gray-300"><span class="text-yellow-300 font-bold">核心洞察</span>：这些项目的底层技术全是今天讲的 <span class="text-white font-semibold">Schema + LLM + Function</span>。学会原理，你就能看懂并参与这个生态。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 8: 范式转变金句 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col items-center justify-center relative" id="slide-8">
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute top-1/3 left-1/3 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-1/3 right-1/3 w-[400px] h-[400px] bg-blue-500/15 rounded-full blur-3xl"></div>
+        </div>
+
+        <div class="absolute top-8 right-12 text-sm text-gray-600">08 / 20</div>
+
+        <div class="relative z-10 flex flex-col items-center max-w-5xl">
+            <i class="fas fa-quote-left text-purple-400/30 text-6xl mb-4"></i>
+            <h2 class="text-4xl font-bold text-center leading-relaxed mb-8">
+                <span class="text-red-300">Chatbot</span> 是 "AI <span class="text-red-300">告诉你</span>怎么做"<br>
+                <span class="gradient-text">Agent</span> 是 "AI <span class="gradient-text">直接帮你</span>做完"
+            </h2>
+            <p class="text-xl text-gray-400 text-center leading-relaxed">
+                这是 AI 从 <span class="text-orange-400 font-semibold">"信息工具"</span> 变成 <span class="gradient-text-green font-semibold">"生产力工具"</span> 的关键一跃
+            </p>
+
+            <div class="mt-12 grid grid-cols-2 gap-6 w-full max-w-3xl">
+                <div class="text-center">
+                    <div class="text-xs text-gray-500 mb-2">AI 的角色变化</div>
+                    <div class="text-2xl text-gray-300">
+                        <span class="text-red-400">顾问</span>
+                        <i class="fas fa-arrow-right mx-3 text-purple-400 text-base"></i>
+                        <span class="gradient-text font-bold">员工</span>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xs text-gray-500 mb-2">用户体验变化</div>
+                    <div class="text-2xl text-gray-300">
+                        <span class="text-red-400">看回答</span>
+                        <i class="fas fa-arrow-right mx-3 text-purple-400 text-base"></i>
+                        <span class="gradient-text font-bold">看结果</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 9: 核心矛盾 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-9">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-exclamation-triangle mr-2"></i>模块二 · 一个根本矛盾</h1>
+            <span class="text-sm text-gray-600">09 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-4xl font-bold mb-10 text-center">为什么 Agent 需要 <span class="gradient-text">Function Calling</span>？</h2>
+
+            <div class="grid grid-cols-3 gap-8 items-center">
+                <!-- LLM 那一侧 -->
+                <div class="card-glass rounded-2xl p-6 border border-purple-500/30 text-center">
+                    <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-purple-500 to-blue-500 mx-auto mb-4 flex items-center justify-center text-4xl shadow-xl">
+                        🧠
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-100 mb-2">LLM</h3>
+                    <div class="text-xs text-purple-400 mb-3">只会"说人话"</div>
+                    <div class="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
+                        <p class="text-sm text-gray-300">"上海今天 22 度"</p>
+                    </div>
+                </div>
+
+                <!-- 中间的鸿沟 -->
+                <div class="text-center">
+                    <div class="text-6xl text-red-400/60 mb-2">⚡</div>
+                    <div class="text-lg font-bold text-red-400 mb-1">鸿沟</div>
+                    <p class="text-xs text-gray-500 leading-relaxed">人话 ≠ 程序指令<br>程序无法直接执行</p>
+                    <div class="mt-4 flex items-center justify-center gap-1">
+                        <i class="fas fa-circle text-red-500/40 text-xs animate-pulse"></i>
+                        <i class="fas fa-circle text-red-500/40 text-xs animate-pulse" style="animation-delay: 0.2s;"></i>
+                        <i class="fas fa-circle text-red-500/40 text-xs animate-pulse" style="animation-delay: 0.4s;"></i>
+                    </div>
+                </div>
+
+                <!-- 程序那一侧 -->
+                <div class="card-glass rounded-2xl p-6 border border-cyan-500/30 text-center">
+                    <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-4 flex items-center justify-center text-4xl shadow-xl">
+                        💻
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-100 mb-2">你的程序</h3>
+                    <div class="text-xs text-cyan-400 mb-3">只认"结构化数据"</div>
+                    <div class="bg-cyan-500/5 border border-cyan-500/20 rounded-lg p-3 code-font text-left">
+                        <p class="text-sm text-gray-300"><span class="code-key">{</span>"city": <span class="code-string">"上海"</span><span class="code-key">}</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-10 card-glass rounded-2xl p-6 border border-green-500/30 max-w-4xl mx-auto text-center">
+                <div class="flex items-center justify-center gap-4 mb-3">
+                    <i class="fas fa-bridge text-green-400 text-2xl"></i>
+                    <h3 class="text-2xl font-bold gradient-text-green">Function Calling 就是这道桥</h3>
+                    <i class="fas fa-bridge text-green-400 text-2xl"></i>
+                </div>
+                <p class="text-gray-400 text-sm">让 LLM 输出 <span class="text-white font-semibold">机器可直接执行的结构化指令</span>，从而触发真实代码执行</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 10: 三角关系 — Schema / LLM / Function -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-10">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-project-diagram mr-2"></i>模块二 · 三个核心角色</h1>
+            <span class="text-sm text-gray-600">10 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center"><span class="gradient-text">Schema</span> · <span class="gradient-text-warm">LLM</span> · <span class="gradient-text-green">Function</span></h2>
+            <p class="text-gray-500 text-sm text-center mb-8">三者各司其职，缺一不可</p>
+
+            <div class="grid grid-cols-3 gap-6 mb-8">
+                <!-- Schema -->
+                <div class="card-glass rounded-2xl p-6 border border-purple-500/30 text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 mx-auto mb-4 flex items-center justify-center text-3xl">
+                        📋
+                    </div>
+                    <h3 class="text-lg font-bold text-purple-300 mb-1">Schema</h3>
+                    <div class="text-xs text-gray-500 mb-3">菜单 / 说明书</div>
+                    <div class="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3 text-left">
+                        <p class="text-xs text-gray-300 leading-relaxed">告诉 LLM：</p>
+                        <p class="text-xs text-gray-400">• 有哪些工具可以用</p>
+                        <p class="text-xs text-gray-400">• 每个工具需要什么参数</p>
+                        <p class="text-xs text-gray-400">• 参数的格式和约束</p>
+                    </div>
+                    <div class="mt-3 text-xs text-purple-400 font-semibold">由你来写</div>
+                </div>
+
+                <!-- LLM -->
+                <div class="card-glass rounded-2xl p-6 border border-orange-500/30 text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500/20 to-pink-500/20 mx-auto mb-4 flex items-center justify-center text-3xl">
+                        🧠
+                    </div>
+                    <h3 class="text-lg font-bold text-orange-300 mb-1">LLM</h3>
+                    <div class="text-xs text-gray-500 mb-3">决策者 / 大脑</div>
+                    <div class="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3 text-left">
+                        <p class="text-xs text-gray-300 leading-relaxed">负责决定：</p>
+                        <p class="text-xs text-gray-400">• 需不需要调工具？</p>
+                        <p class="text-xs text-gray-400">• 调哪个工具？</p>
+                        <p class="text-xs text-gray-400">• 参数填什么？</p>
+                    </div>
+                    <div class="mt-3 text-xs text-orange-400 font-semibold">云端模型自动判断</div>
+                </div>
+
+                <!-- Function -->
+                <div class="card-glass rounded-2xl p-6 border border-green-500/30 text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/20 to-cyan-500/20 mx-auto mb-4 flex items-center justify-center text-3xl">
+                        ⚡
+                    </div>
+                    <h3 class="text-lg font-bold text-green-300 mb-1">Function</h3>
+                    <div class="text-xs text-gray-500 mb-3">执行者 / 手脚</div>
+                    <div class="bg-green-500/5 border border-green-500/20 rounded-lg p-3 text-left">
+                        <p class="text-xs text-gray-300 leading-relaxed">真正执行：</p>
+                        <p class="text-xs text-gray-400">• 发 HTTP 请求</p>
+                        <p class="text-xs text-gray-400">• 读写数据库</p>
+                        <p class="text-xs text-gray-400">• 操作文件系统</p>
+                    </div>
+                    <div class="mt-3 text-xs text-green-400 font-semibold">由你来写</div>
+                </div>
+            </div>
+
+            <div class="card-glass rounded-2xl p-5 border border-white/10 max-w-4xl mx-auto">
+                <div class="flex items-center justify-center gap-4 text-sm">
+                    <span class="text-purple-300 font-bold">Schema</span>
+                    <i class="fas fa-arrow-right text-gray-600"></i>
+                    <span class="text-gray-400">告诉 LLM "有什么菜"</span>
+                    <i class="fas fa-arrow-right text-gray-600"></i>
+                    <span class="text-orange-300 font-bold">LLM</span>
+                    <i class="fas fa-arrow-right text-gray-600"></i>
+                    <span class="text-gray-400">输出"点菜单"</span>
+                    <i class="fas fa-arrow-right text-gray-600"></i>
+                    <span class="text-green-300 font-bold">Function</span>
+                    <i class="fas fa-arrow-right text-gray-600"></i>
+                    <span class="text-gray-400">真正"做菜"</span>
+                </div>
+                <p class="text-center text-xs text-gray-500 mt-3"><i class="fas fa-key text-yellow-400 mr-1"></i>没有 Schema → LLM 不知道有什么工具 → 永远不会调用 Function</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 11: 5 步法流程图 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-11">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-route mr-2"></i>模块二 · Function Calling 工作流</h1>
+            <span class="text-sm text-gray-600">11 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center">完整调用链路 <span class="gradient-text">5 步法</span></h2>
+            <p class="text-gray-500 text-sm text-center mb-8">以"查上海天气"为例，看 AI 如何"动手"</p>
+
+            <div class="flex items-stretch gap-2">
+                <!-- Step 0: 用户 -->
+                <div class="flex flex-col items-center justify-center w-28">
+                    <div class="w-14 h-14 rounded-full bg-gradient-to-br from-pink-500 to-orange-500 flex items-center justify-center text-2xl shadow-lg">
+                        👤
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2 text-center">用户提问<br>"上海今天天气?"</p>
+                </div>
+
+                <div class="flex items-center"><i class="fas fa-arrow-right text-gray-600 text-xl"></i></div>
+
+                <!-- Step 1 -->
+                <div class="flex-1 flow-node text-center">
+                    <div class="badge bg-purple-500/20 text-purple-300 mb-2">Step 1</div>
+                    <p class="text-xs text-gray-300 leading-relaxed">把<span class="text-purple-300 font-semibold">工具说明书</span>+用户问题一起发给 LLM</p>
+                </div>
+
+                <div class="flex items-center"><i class="fas fa-arrow-right text-gray-600 text-xl"></i></div>
+
+                <!-- Step 2 -->
+                <div class="flex-1 flow-node text-center">
+                    <div class="badge bg-blue-500/20 text-blue-300 mb-2">Step 2</div>
+                    <p class="text-xs text-gray-300 leading-relaxed">LLM 思考：<br>用哪个工具？参数是什么？</p>
+                </div>
+
+                <div class="flex items-center"><i class="fas fa-arrow-right text-gray-600 text-xl"></i></div>
+
+                <!-- Step 3 -->
+                <div class="flex-1 flow-node text-center">
+                    <div class="badge bg-cyan-500/20 text-cyan-300 mb-2">Step 3</div>
+                    <p class="text-xs text-gray-300 leading-relaxed">LLM 返回 <span class="code-font text-cyan-300">JSON</span>：<br><span class="code-font text-[10px] text-gray-400">{"fn":"get_weather","city":"上海"}</span></p>
+                </div>
+            </div>
+
+            <div class="my-6 flex justify-center">
+                <i class="fas fa-arrow-down text-gray-600 text-2xl animate-pulse"></i>
+            </div>
+
+            <div class="flex items-stretch gap-2">
+                <!-- Step 5: 输出给用户 -->
+                <div class="flex flex-col items-center justify-center w-28">
+                    <div class="w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-2xl shadow-lg">
+                        ✨
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2 text-center">最终回复<br>"22 度，多云"</p>
+                </div>
+
+                <div class="flex items-center"><i class="fas fa-arrow-left text-gray-600 text-xl"></i></div>
+
+                <!-- Step 5 -->
+                <div class="flex-1 flow-node text-center">
+                    <div class="badge bg-pink-500/20 text-pink-300 mb-2">Step 5</div>
+                    <p class="text-xs text-gray-300 leading-relaxed">把执行结果<br>再发回 LLM 组织成人话</p>
+                </div>
+
+                <div class="flex items-center"><i class="fas fa-arrow-left text-gray-600 text-xl"></i></div>
+
+                <!-- Step 4 -->
+                <div class="flex-1 flow-node text-center" style="border-color: rgba(251, 191, 36, 0.4);">
+                    <div class="badge bg-yellow-500/20 text-yellow-300 mb-2">Step 4 ⭐</div>
+                    <p class="text-xs text-gray-300 leading-relaxed"><span class="text-yellow-300 font-semibold">你的程序</span>真正执行函数<br>拿到 <span class="code-font text-yellow-300">{temp:22}</span></p>
+                </div>
+
+                <div class="flex items-center"><i class="fas fa-arrow-left text-gray-600 text-xl"></i></div>
+
+                <!-- 占位（保持对齐） -->
+                <div class="flex-1"></div>
+            </div>
+
+            <div class="mt-6 flex justify-center">
+                <div class="card-glass rounded-xl px-6 py-3 border border-yellow-500/30 inline-flex items-center gap-3">
+                    <i class="fas fa-exclamation-circle text-yellow-400"></i>
+                    <p class="text-sm text-gray-300">
+                        <span class="text-yellow-300 font-bold">关键点</span>：LLM 只生成"调用请求"，<span class="text-white">真正执行函数的是你的代码</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 12: 4 个反常识 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-12">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-lightbulb mr-2"></i>模块二 · 必须知道的 4 个反常识</h1>
+            <span class="text-sm text-gray-600">12 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center">⚠️ 4 个 <span class="gradient-text-warm">反常识</span> 认知点</h2>
+            <p class="text-gray-500 text-sm text-center mb-8">99% 的人第一次接触 FC 都会理解错的地方</p>
+
+            <div class="grid grid-cols-2 gap-5">
+                <div class="card-glass rounded-2xl p-5 border-l-4 border-red-500/60">
+                    <div class="flex items-start gap-3">
+                        <div class="text-4xl text-red-400/60">①</div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-100 mb-2">LLM 根本不执行函数！</h3>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-2">很多人以为是 LLM 自己去调 API → ❌ 错！LLM 只是"建议你调用某个函数"。</p>
+                            <div class="bg-purple-500/5 border border-purple-500/20 rounded-lg p-2.5 text-xs text-purple-300">
+                                <i class="fas fa-quote-left text-purple-400 text-xs mr-1"></i>
+                                类比：LLM 是开处方的医生，你的代码才是配药、给药的护士
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-5 border-l-4 border-yellow-500/60">
+                    <div class="flex items-start gap-3">
+                        <div class="text-4xl text-yellow-400/60">②</div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-100 mb-2">description 比工具本身更重要</h3>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-2">LLM 怎么知道有什么工具？靠你给它的"工具描述"。<span class="text-yellow-300">描述写得越好，AI 调用越准</span>。</p>
+                            <div class="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-2.5 text-xs text-yellow-300">
+                                <i class="fas fa-bullseye text-yellow-400 text-xs mr-1"></i>
+                                测试同学的优势：写好工具描述 = 写好用例 description
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-5 border-l-4 border-blue-500/60">
+                    <div class="flex items-start gap-3">
+                        <div class="text-4xl text-blue-400/60">③</div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-100 mb-2">LLM 会"主动反问"</h3>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-2">如果工具需要"城市"参数，但用户没说，LLM 会回："请问您想查哪个城市？"——<span class="text-blue-300">不会瞎编参数</span>。</p>
+                            <div class="bg-blue-500/5 border border-blue-500/20 rounded-lg p-2.5 text-xs text-blue-300">
+                                <i class="fas fa-comment text-blue-400 text-xs mr-1"></i>
+                                类似一个有责任心的实习生，缺信息会主动找你确认
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-5 border-l-4 border-green-500/60">
+                    <div class="flex items-start gap-3">
+                        <div class="text-4xl text-green-400/60">④</div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-100 mb-2">安全完全可控</h3>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-2">因为执行权在你的代码里，所以你可以：拒绝危险调用、修改参数、加权限校验、加审计日志。</p>
+                            <div class="bg-green-500/5 border border-green-500/20 rounded-lg p-2.5 text-xs text-green-300">
+                                <i class="fas fa-shield-alt text-green-400 text-xs mr-1"></i>
+                                例：禁止 AI 调"删库"SQL，只允许 SELECT
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 13: Schema 5 黄金法则 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-13">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-medal mr-2"></i>模块二 · 写好 Schema 的黄金法则</h1>
+            <span class="text-sm text-gray-600">13 / 20</span>
+        </div>
+
+        <div class="flex-1 flex gap-8">
+            <div class="w-1/2 flex flex-col justify-center">
+                <h2 class="text-3xl font-bold mb-2">5 条 <span class="gradient-text-gold">黄金法则</span></h2>
+                <p class="text-gray-500 text-sm mb-6">让你的 Agent 智商提升 80%</p>
+
+                <div class="space-y-3">
+                    <div class="card-glass rounded-xl p-3.5 flex items-center gap-3 border border-yellow-500/20">
+                        <div class="w-8 h-8 rounded-lg bg-yellow-500/15 flex items-center justify-center text-yellow-400 font-bold text-sm flex-shrink-0">1</div>
+                        <div>
+                            <p class="text-sm text-gray-200 font-semibold">Description 越清楚，调用越准确</p>
+                            <p class="text-xs text-gray-500">用业务语言描述，不要用技术黑话</p>
+                        </div>
+                    </div>
+                    <div class="card-glass rounded-xl p-3.5 flex items-center gap-3 border border-yellow-500/20">
+                        <div class="w-8 h-8 rounded-lg bg-yellow-500/15 flex items-center justify-center text-yellow-400 font-bold text-sm flex-shrink-0">2</div>
+                        <div>
+                            <p class="text-sm text-gray-200 font-semibold">参数命名要直观</p>
+                            <p class="text-xs text-gray-500"><span class="code-font text-green-300">order_id</span> 优于 <span class="code-font text-red-300">id</span></p>
+                        </div>
+                    </div>
+                    <div class="card-glass rounded-xl p-3.5 flex items-center gap-3 border border-yellow-500/20">
+                        <div class="w-8 h-8 rounded-lg bg-yellow-500/15 flex items-center justify-center text-yellow-400 font-bold text-sm flex-shrink-0">3</div>
+                        <div>
+                            <p class="text-sm text-gray-200 font-semibold">善用 enum 限制取值</p>
+                            <p class="text-xs text-gray-500">避免 LLM 自由发挥，比如 method 只能是 GET/POST/PUT/DELETE</p>
+                        </div>
+                    </div>
+                    <div class="card-glass rounded-xl p-3.5 flex items-center gap-3 border border-yellow-500/20">
+                        <div class="w-8 h-8 rounded-lg bg-yellow-500/15 flex items-center justify-center text-yellow-400 font-bold text-sm flex-shrink-0">4</div>
+                        <div>
+                            <p class="text-sm text-gray-200 font-semibold">必填 vs 可选要严格区分</p>
+                            <p class="text-xs text-gray-500"><span class="code-font">required</span> 字段不写，LLM 就会瞎填</p>
+                        </div>
+                    </div>
+                    <div class="card-glass rounded-xl p-3.5 flex items-center gap-3 border border-yellow-500/20">
+                        <div class="w-8 h-8 rounded-lg bg-yellow-500/15 flex items-center justify-center text-yellow-400 font-bold text-sm flex-shrink-0">5</div>
+                        <div>
+                            <p class="text-sm text-gray-200 font-semibold">错误返回要结构化</p>
+                            <p class="text-xs text-gray-500">让 LLM 能理解错误原因并自我纠正</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-1/2 flex flex-col justify-center">
+                <p class="text-xs text-gray-500 mb-2">范例：一个写得好的 Schema</p>
+                <div class="code-block">
+<pre class="text-xs"><span class="code-key">{</span>
+  <span class="code-string">"name"</span>: <span class="code-string">"http_request"</span>,
+  <span class="code-string">"description"</span>: <span class="code-string">"向被测 HTTP 接口发起请求</span>
+<span class="code-string">    支持 GET/POST/PUT/DELETE 方法</span>
+<span class="code-string">    用于执行接口测试"</span>,
+  <span class="code-string">"parameters"</span>: <span class="code-key">{</span>
+    <span class="code-string">"type"</span>: <span class="code-string">"object"</span>,
+    <span class="code-string">"properties"</span>: <span class="code-key">{</span>
+      <span class="code-string">"method"</span>: <span class="code-key">{</span>
+        <span class="code-string">"type"</span>: <span class="code-string">"string"</span>,
+        <span class="code-string">"enum"</span>: [<span class="code-string">"GET"</span>,<span class="code-string">"POST"</span>,<span class="code-string">"PUT"</span>,<span class="code-string">"DELETE"</span>],
+        <span class="code-string">"description"</span>: <span class="code-string">"HTTP 方法"</span>
+      <span class="code-key">}</span>,
+      <span class="code-string">"url"</span>: <span class="code-key">{</span>
+        <span class="code-string">"type"</span>: <span class="code-string">"string"</span>,
+        <span class="code-string">"description"</span>: <span class="code-string">"完整的接口 URL"</span>
+      <span class="code-key">}</span>,
+      <span class="code-string">"body"</span>: <span class="code-key">{</span>
+        <span class="code-string">"type"</span>: <span class="code-string">"object"</span>,
+        <span class="code-string">"description"</span>: <span class="code-string">"请求体，仅 POST/PUT 需要"</span>
+      <span class="code-key">}</span>
+    <span class="code-key">}</span>,
+    <span class="code-string">"required"</span>: [<span class="code-string">"method"</span>, <span class="code-string">"url"</span>]
+  <span class="code-key">}</span>
+<span class="code-key">}</span></pre>
+                </div>
+                <div class="mt-3 flex gap-2 flex-wrap">
+                    <span class="badge bg-green-500/15 text-green-400">✓ 业务化描述</span>
+                    <span class="badge bg-green-500/15 text-green-400">✓ 命名清晰</span>
+                    <span class="badge bg-green-500/15 text-green-400">✓ 用 enum</span>
+                    <span class="badge bg-green-500/15 text-green-400">✓ required 明确</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 14: Demo 演示 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-14">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-play-circle mr-2"></i>模块三 · 现场 Demo 时间</h1>
+            <span class="text-sm text-gray-600">14 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <div class="text-center mb-6">
+                <div class="badge bg-red-500/15 text-red-300 px-4 py-1.5 mb-3">
+                    <i class="fas fa-circle text-red-500 text-xs animate-pulse"></i>
+                    <span>LIVE</span>
+                </div>
+                <h2 class="text-4xl font-bold mb-2">现场写代码，<span class="gradient-text">让 AI 真的"动手"</span></h2>
+                <p class="text-gray-500 text-sm">看 30 行代码如何让 AI 调用真实 API</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6">
+                <div class="card-glass rounded-2xl p-6 border border-purple-500/30">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                            <i class="fas fa-cloud-sun text-purple-400"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-purple-400 font-bold">DEMO 1</div>
+                            <h3 class="text-lg font-bold text-gray-100">Hello, Function Calling</h3>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-3">用一个简单的"查天气"工具，看 LLM 如何返回 <span class="code-font text-purple-300">tool_calls</span> 结构</p>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-eye text-purple-400 text-xs"></i>
+                            <span class="text-gray-400">啊哈时刻 1：亲眼看到 LLM 返回的原始 JSON</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-eye text-purple-400 text-xs"></i>
+                            <span class="text-gray-400">啊哈时刻 2：故意不带城市，观察 LLM 反问</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-eye text-purple-400 text-xs"></i>
+                            <span class="text-gray-400">啊哈时刻 3：问"上海北京哪个热"，看并行调用</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6 border-2 border-cyan-500/40">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
+                            <i class="fas fa-vial text-cyan-400"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-cyan-400 font-bold">DEMO 2 · 测试场景</div>
+                            <h3 class="text-lg font-bold text-gray-100">调用真实接口</h3>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-3">基于 <span class="code-font text-cyan-300">JSONPlaceholder</span> 公开 API，让 AI 真正发起 HTTP 请求</p>
+                    <div class="space-y-1.5">
+                        <div class="chat-bubble-user code-font text-xs">"查 /posts/1 这个接口返回什么"</div>
+                        <div class="chat-bubble-bot text-xs">📡 调用 http_get → 返回 title: "sunt aut..."</div>
+                        <div class="chat-bubble-user code-font text-xs">"再查 /posts/2 和 /posts/3"</div>
+                        <div class="chat-bubble-bot text-xs">⚡ 并行调用，返回三篇文章标题</div>
+                    </div>
+                    <div class="mt-3 text-center text-xs text-cyan-300">
+                        <i class="fas fa-arrow-right"></i> 与下一个实战项目使用同一系统，无缝过渡
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-center">
+                <div class="card-glass rounded-xl px-6 py-3 border border-orange-500/20 inline-flex items-center gap-3">
+                    <i class="fas fa-info-circle text-orange-400"></i>
+                    <p class="text-sm text-gray-300">技术选型：<span class="code-font text-cyan-300">Python 3.9+</span> · <span class="code-font text-cyan-300">openai SDK</span> · <span class="code-font text-cyan-300">智谱 GLM-4-Flash</span> <span class="badge bg-green-500/15 text-green-400">永久免费</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 15: 实战项目封面 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-15">
+        <div class="absolute top-8 left-12 text-sm text-gray-500"><i class="fas fa-flask mr-2"></i>模块四 · 实战项目</div>
+        <div class="absolute top-8 right-12 text-sm text-gray-600">15 / 20</div>
+
+        <div class="flex-1 flex flex-col justify-center" style="padding-top: 2rem;">
+            <h2 class="text-3xl font-bold mb-2 text-center">《AI 接口测试小助手 <span class="gradient-text">v1.0</span>》代码结构</h2>
+            <p class="text-gray-500 text-sm text-center mb-6">三个文件 = 一家自动化餐厅，各司其职</p>
+
+            <div class="grid grid-cols-3 gap-5 mb-6">
+                <!-- main.py -->
+                <div class="card-glass rounded-2xl p-5 border border-blue-500/30 relative">
+                    <div class="absolute -top-3 left-5 badge bg-blue-500/80 text-white px-3 py-0.5 text-xs">你不用改</div>
+                    <div class="flex items-center gap-3 mb-3 mt-1">
+                        <div class="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center text-xl">👔</div>
+                        <div>
+                            <h3 class="text-base code-font font-bold text-blue-300">main.py</h3>
+                            <div class="text-[10px] text-gray-500">餐厅经理</div>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 text-xs text-gray-400">
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-blue-400 text-[10px] mt-0.5"></i> 接待用户（接收自然语言指令）</div>
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-blue-400 text-[10px] mt-0.5"></i> 递菜单给 LLM（发送 Schema）</div>
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-blue-400 text-[10px] mt-0.5"></i> 收到点菜单后派给厨房执行</div>
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-blue-400 text-[10px] mt-0.5"></i> 把结果端回给用户</div>
+                    </div>
+                </div>
+
+                <!-- schemas.py -->
+                <div class="card-glass rounded-2xl p-5 border-2 border-purple-500/40 relative shadow-lg shadow-purple-500/5">
+                    <div class="absolute -top-3 left-5 badge bg-purple-500 text-white px-3 py-0.5 text-xs">你要补全 ⭐</div>
+                    <div class="flex items-center gap-3 mb-3 mt-1">
+                        <div class="w-10 h-10 rounded-lg bg-purple-500/15 flex items-center justify-center text-xl">📋</div>
+                        <div>
+                            <h3 class="text-base code-font font-bold text-purple-300">schemas.py</h3>
+                            <div class="text-[10px] text-gray-500">菜单 / 工具说明书</div>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 text-xs text-gray-400">
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-purple-400 text-[10px] mt-0.5"></i> 告诉 LLM 有哪些工具可用</div>
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-purple-400 text-[10px] mt-0.5"></i> 每个工具需要什么参数</div>
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-purple-400 text-[10px] mt-0.5"></i> 参数的类型和约束</div>
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-purple-400 text-[10px] mt-0.5"></i> 没有菜单 → LLM 不知道有工具</div>
+                    </div>
+                </div>
+
+                <!-- tools.py -->
+                <div class="card-glass rounded-2xl p-5 border-2 border-green-500/40 relative shadow-lg shadow-green-500/5">
+                    <div class="absolute -top-3 left-5 badge bg-green-500 text-white px-3 py-0.5 text-xs">你要补全 ⭐</div>
+                    <div class="flex items-center gap-3 mb-3 mt-1">
+                        <div class="w-10 h-10 rounded-lg bg-green-500/15 flex items-center justify-center text-xl">🔧</div>
+                        <div>
+                            <h3 class="text-base code-font font-bold text-green-300">tools.py</h3>
+                            <div class="text-[10px] text-gray-500">厨房 / 真正执行代码</div>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 text-xs text-gray-400">
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-green-400 text-[10px] mt-0.5"></i> 真正发 HTTP 请求</div>
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-green-400 text-[10px] mt-0.5"></i> 真正读 YAML 文件</div>
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-green-400 text-[10px] mt-0.5"></i> 真正做断言比较</div>
+                        <div class="flex items-start gap-2"><i class="fas fa-check text-green-400 text-[10px] mt-0.5"></i> 真正写测试日志</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 流程箭头 -->
+            <div class="card-glass rounded-xl p-4 border border-white/10 max-w-4xl mx-auto">
+                <div class="flex items-center justify-center gap-2 text-xs">
+                    <span class="bg-pink-500/15 text-pink-300 px-2 py-1 rounded font-bold">你说</span>
+                    <span class="text-gray-400">"执行TC001"</span>
+                    <i class="fas fa-arrow-right text-gray-600"></i>
+                    <span class="bg-blue-500/15 text-blue-300 px-2 py-1 rounded font-bold">main.py</span>
+                    <span class="text-gray-400">发给LLM</span>
+                    <i class="fas fa-arrow-right text-gray-600"></i>
+                    <span class="bg-purple-500/15 text-purple-300 px-2 py-1 rounded font-bold">LLM 看 schema</span>
+                    <span class="text-gray-400">决定调工具</span>
+                    <i class="fas fa-arrow-right text-gray-600"></i>
+                    <span class="bg-green-500/15 text-green-300 px-2 py-1 rounded font-bold">tools.py</span>
+                    <span class="text-gray-400">执行</span>
+                    <i class="fas fa-arrow-right text-gray-600"></i>
+                    <span class="bg-yellow-500/15 text-yellow-300 px-2 py-1 rounded font-bold">返回结果</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 16: 4 个核心工具 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-16">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-tools mr-2"></i>模块四 · 你要补全的 4 个工具</h1>
+            <span class="text-sm text-gray-600">16 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center">学员动手：补全 <span class="gradient-text">4 个核心工具</span></h2>
+            <p class="text-gray-500 text-sm text-center mb-6">脚手架已就绪，你只需填空 <span class="code-font text-cyan-300">tools.py</span> + <span class="code-font text-cyan-300">schemas.py</span></p>
+
+            <div class="grid grid-cols-4 gap-4">
+                <div class="card-glass rounded-2xl p-5 border-t-4 border-purple-500/60">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-purple-500/15 flex items-center justify-center">
+                            <i class="fas fa-file-import text-purple-400"></i>
+                        </div>
+                        <span class="text-xs text-purple-400 font-bold">#1</span>
+                    </div>
+                    <h3 class="text-sm code-font font-bold text-gray-100 mb-2">read_test_case</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed mb-3">从 yaml 读取一条测试用例</p>
+                    <div class="space-y-1 text-xs">
+                        <div><span class="text-purple-300">输入</span>: case_id</div>
+                        <div><span class="text-green-300">输出</span>: 用例详情 dict</div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-5 border-t-4 border-cyan-500/60">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-cyan-500/15 flex items-center justify-center">
+                            <i class="fas fa-paper-plane text-cyan-400"></i>
+                        </div>
+                        <span class="text-xs text-cyan-400 font-bold">#2</span>
+                    </div>
+                    <h3 class="text-sm code-font font-bold text-gray-100 mb-2">http_request</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed mb-3">发送 HTTP 请求<br>支持 GET/POST/PUT/DELETE</p>
+                    <div class="space-y-1 text-xs">
+                        <div><span class="text-purple-300">输入</span>: method, url, body</div>
+                        <div><span class="text-green-300">输出</span>: 响应 dict</div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-5 border-t-4 border-green-500/60">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-green-500/15 flex items-center justify-center">
+                            <i class="fas fa-check-double text-green-400"></i>
+                        </div>
+                        <span class="text-xs text-green-400 font-bold">#3</span>
+                    </div>
+                    <h3 class="text-sm code-font font-bold text-gray-100 mb-2">assert_field</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed mb-3">断言响应中某字段<br>是否等于期望值</p>
+                    <div class="space-y-1 text-xs">
+                        <div><span class="text-purple-300">输入</span>: response, field, expected</div>
+                        <div><span class="text-green-300">输出</span>: 通过/失败 + 原因</div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-5 border-t-4 border-orange-500/60">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 rounded-lg bg-orange-500/15 flex items-center justify-center">
+                            <i class="fas fa-save text-orange-400"></i>
+                        </div>
+                        <span class="text-xs text-orange-400 font-bold">#4</span>
+                    </div>
+                    <h3 class="text-sm code-font font-bold text-gray-100 mb-2">save_test_log</h3>
+                    <p class="text-xs text-gray-400 leading-relaxed mb-3">保存一条测试结果<br>到本地 json 文件</p>
+                    <div class="space-y-1 text-xs">
+                        <div><span class="text-purple-300">输入</span>: case_name, status, detail</div>
+                        <div><span class="text-green-300">输出</span>: 保存成功提示</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8">
+                <p class="text-xs text-gray-500 mb-3 text-center">📋 预置的测试用例（test_data.yaml，无需自己写）</p>
+                <div class="grid grid-cols-5 gap-2">
+                    <div class="card-glass rounded-lg p-3 text-center border border-green-500/20">
+                        <div class="text-xs text-gray-500 mb-1 code-font">TC001</div>
+                        <div class="text-[10px] text-gray-300">查文章 1<br>userId=1</div>
+                    </div>
+                    <div class="card-glass rounded-lg p-3 text-center border border-green-500/20">
+                        <div class="text-xs text-gray-500 mb-1 code-font">TC002</div>
+                        <div class="text-[10px] text-gray-300">查用户 2<br>username</div>
+                    </div>
+                    <div class="card-glass rounded-lg p-3 text-center border border-green-500/20">
+                        <div class="text-xs text-gray-500 mb-1 code-font">TC003</div>
+                        <div class="text-[10px] text-gray-300">POST 创建文章<br>userId=99</div>
+                    </div>
+                    <div class="card-glass rounded-lg p-3 text-center border border-red-500/20">
+                        <div class="text-xs text-red-400 mb-1 code-font">TC004</div>
+                        <div class="text-[10px] text-gray-300">查不存在文章<br>(预期失败)</div>
+                    </div>
+                    <div class="card-glass rounded-lg p-3 text-center border border-green-500/20">
+                        <div class="text-xs text-gray-500 mb-1 code-font">TC005</div>
+                        <div class="text-[10px] text-gray-300">查评论<br>email</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 17: 5 句必做对话 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-17">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-comments mr-2"></i>模块四 · 见证奇迹的 5 句对话</h1>
+            <span class="text-sm text-gray-600">17 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center">递进式 <span class="gradient-text-green">5 句对话</span>，体验 Agent 完整能力</h2>
+            <p class="text-gray-500 text-sm text-center mb-6">学员必须跑通并截图 · 难度从单工具调用到任务规划</p>
+
+            <div class="space-y-2.5">
+                <div class="card-glass rounded-xl p-4 flex items-center gap-4 border-l-4 border-purple-500/60">
+                    <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-300 font-bold flex-shrink-0">1</div>
+                    <div class="chat-bubble-user max-w-md flex-shrink-0">"帮我执行 TC001"</div>
+                    <i class="fas fa-arrow-right text-gray-600 flex-shrink-0"></i>
+                    <div class="flex-1">
+                        <div class="text-sm text-gray-300">单工具调用 → 4 步串联</div>
+                        <div class="text-xs text-gray-500 code-font">read_test_case → http_request → assert_field → save_test_log</div>
+                    </div>
+                    <span class="badge bg-purple-500/15 text-purple-400 flex-shrink-0">🟢 入门</span>
+                </div>
+
+                <div class="card-glass rounded-xl p-4 flex items-center gap-4 border-l-4 border-blue-500/60">
+                    <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-300 font-bold flex-shrink-0">2</div>
+                    <div class="chat-bubble-user max-w-md flex-shrink-0">"TC001-TC005 全部执行，告诉我哪些通过哪些失败"</div>
+                    <i class="fas fa-arrow-right text-gray-600 flex-shrink-0"></i>
+                    <div class="flex-1">
+                        <div class="text-sm text-gray-300">多工具循环调用</div>
+                        <div class="text-xs text-gray-500">5 个用例 × 4 个工具 = 20+ 次调用，结果汇总</div>
+                    </div>
+                    <span class="badge bg-blue-500/15 text-blue-400 flex-shrink-0">🟡 进阶</span>
+                </div>
+
+                <div class="card-glass rounded-xl p-4 flex items-center gap-4 border-l-4 border-cyan-500/60">
+                    <div class="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-300 font-bold flex-shrink-0">3</div>
+                    <div class="chat-bubble-user max-w-md flex-shrink-0">"TC004 为什么失败了？"</div>
+                    <i class="fas fa-arrow-right text-gray-600 flex-shrink-0"></i>
+                    <div class="flex-1">
+                        <div class="text-sm text-gray-300">基于上下文记忆的故障分析</div>
+                        <div class="text-xs text-gray-500">不需要重新执行，直接分析刚才的运行结果</div>
+                    </div>
+                    <span class="badge bg-cyan-500/15 text-cyan-400 flex-shrink-0">🟡 记忆</span>
+                </div>
+
+                <div class="card-glass rounded-xl p-4 flex items-center gap-4 border-l-4 border-orange-500/60">
+                    <div class="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-300 font-bold flex-shrink-0">4</div>
+                    <div class="chat-bubble-user max-w-md flex-shrink-0">"把所有失败的用例重新跑一遍"</div>
+                    <i class="fas fa-arrow-right text-gray-600 flex-shrink-0"></i>
+                    <div class="flex-1">
+                        <div class="text-sm text-gray-300">自主筛选 + 智能重试</div>
+                        <div class="text-xs text-gray-500">AI 自己从历史中筛选失败用例，无需你指定 ID</div>
+                    </div>
+                    <span class="badge bg-orange-500/15 text-orange-400 flex-shrink-0">🟠 决策</span>
+                </div>
+
+                <div class="card-glass rounded-xl p-4 flex items-center gap-4 border-l-4 border-pink-500/60">
+                    <div class="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center text-pink-300 font-bold flex-shrink-0">5</div>
+                    <div class="chat-bubble-user max-w-md flex-shrink-0">"把今天的测试结果整理成日报，发我"</div>
+                    <i class="fas fa-arrow-right text-gray-600 flex-shrink-0"></i>
+                    <div class="flex-1">
+                        <div class="text-sm text-gray-300">任务规划 + 自然语言总结</div>
+                        <div class="text-xs text-gray-500">读 json 日志 → 统计 → 生成 markdown 日报</div>
+                    </div>
+                    <span class="badge bg-pink-500/15 text-pink-400 flex-shrink-0">🔴 高阶</span>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-center">
+                <div class="card-glass rounded-xl px-6 py-3 border border-green-500/30 inline-flex items-center gap-3">
+                    <i class="fas fa-trophy text-yellow-400"></i>
+                    <p class="text-sm text-gray-300">
+                        跑通这 5 句的瞬间，你会真切体会到——<span class="gradient-text-green font-bold">"AI 真的成了我的实习测试工程师"</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 18: 课后作业 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-18">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-book mr-2"></i>模块五 · 课后作业</h1>
+            <span class="text-sm text-gray-600">18 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center">课后作业，把今天学的 <span class="gradient-text">真正用起来</span></h2>
+            <p class="text-gray-500 text-sm text-center mb-8">完成基础原型即为合格，业务落地和拓展思考为加分项</p>
+
+            <div class="grid grid-cols-3 gap-5">
+                <div class="card-glass rounded-2xl p-6 border-2 border-purple-500/40 relative shadow-2xl shadow-purple-500/10">
+                    <div class="absolute -top-3 left-6 badge bg-purple-500 text-white px-3 py-1">必做 ⭐</div>
+                    <div class="flex items-center gap-3 mb-4 mt-2">
+                        <div class="w-12 h-12 rounded-xl bg-purple-500/15 flex items-center justify-center">
+                            <i class="fas fa-code text-purple-400 text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-purple-400 font-bold">作业一</div>
+                            <h3 class="text-base font-bold text-gray-100">完成基础原型</h3>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-4 leading-relaxed">课堂未完成的同学独立完成"AI 接口测试小助手 v1.0"</p>
+                    <div class="space-y-1.5 text-xs text-gray-500">
+                        <div class="flex items-center gap-2"><i class="fas fa-check text-purple-400 text-xs"></i> 完整代码（tools + schemas）</div>
+                        <div class="flex items-center gap-2"><i class="fas fa-check text-purple-400 text-xs"></i> 5 条对话运行截图</div>
+                        <div class="flex items-center gap-2"><i class="fas fa-check text-purple-400 text-xs"></i> test_results.json</div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6 border-2 border-cyan-500/40 relative shadow-2xl shadow-cyan-500/10">
+                    <div class="absolute -top-3 left-6 badge bg-cyan-500 text-white px-3 py-1">选做 · 加分项 ⭐</div>
+                    <div class="flex items-center gap-3 mb-4 mt-2">
+                        <div class="w-12 h-12 rounded-xl bg-cyan-500/15 flex items-center justify-center">
+                            <i class="fas fa-rocket text-cyan-400 text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-cyan-400 font-bold">作业二</div>
+                            <h3 class="text-base font-bold text-gray-100">业务落地</h3>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-4 leading-relaxed">把课堂代码中的 <span class="code-font text-cyan-300">JSONPlaceholder</span> 替换为<span class="text-white font-semibold">你自己负责的业务接口</span></p>
+                    <div class="space-y-1.5 text-xs text-gray-500">
+                        <div class="flex items-center gap-2"><i class="fas fa-check text-cyan-400 text-xs"></i> 替换后的 test_data.yaml</div>
+                        <div class="flex items-center gap-2"><i class="fas fa-check text-cyan-400 text-xs"></i> 至少 3 条业务用例</div>
+                        <div class="flex items-center gap-2"><i class="fas fa-check text-cyan-400 text-xs"></i> 3 条对话截图</div>
+                    </div>
+                </div>
+
+                <div class="card-glass rounded-2xl p-6 border border-green-500/30 relative">
+                    <div class="absolute -top-3 left-6 badge bg-green-500/80 text-white px-3 py-1">选做 · 加分项</div>
+                    <div class="flex items-center gap-3 mb-4 mt-2">
+                        <div class="w-12 h-12 rounded-xl bg-green-500/15 flex items-center justify-center">
+                            <i class="fas fa-brain text-green-400 text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-green-400 font-bold">作业三</div>
+                            <h3 class="text-base font-bold text-gray-100">拓展思考</h3>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-4 leading-relaxed">设计你业务线的工具集 + 思考最佳应用场景</p>
+                    <div class="space-y-1.5 text-xs text-gray-500">
+                        <div class="flex items-center gap-2"><i class="fas fa-check text-green-400 text-xs"></i> 5 个工具的 Schema</div>
+                        <div class="flex items-center gap-2"><i class="fas fa-check text-green-400 text-xs"></i> 3 个适合 Agent 的场景</div>
+                        <div class="flex items-center gap-2"><i class="fas fa-check text-green-400 text-xs"></i> 说明"为什么"</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 grid grid-cols-2 gap-5">
+                <div class="card-glass rounded-xl p-4 border border-yellow-500/20">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-trophy text-yellow-400"></i>
+                        <h4 class="text-sm font-bold text-gray-200">考核维度</h4>
+                    </div>
+                    <div class="text-xs text-gray-400 space-y-1">
+                        <div class="flex justify-between"><span>课堂参与</span><span class="text-yellow-400">20%</span></div>
+                        <div class="flex justify-between"><span>必做作业完成度</span><span class="text-yellow-400">60%</span></div>
+                        <div class="flex justify-between"><span>选做加分</span><span class="text-yellow-400">20%</span></div>
+                    </div>
+                </div>
+                <div class="card-glass rounded-xl p-4 border border-purple-500/20">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-bullseye text-purple-400"></i>
+                        <h4 class="text-sm font-bold text-gray-200">结业目标</h4>
+                    </div>
+                    <p class="text-xs text-gray-400">每位学员在课程结束 <span class="text-white font-semibold">1 周内</span>，能独立完成"AI 接口测试小助手 v1.0"并<span class="gradient-text font-bold">理解 Function Calling 的完整原理</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 19: 测试落地路径 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col" id="slide-19">
+        <div class="slide-header">
+            <h1 class="text-lg font-bold text-gray-500"><i class="fas fa-rocket mr-2"></i>模块五 · AI 测试提效落地路径</h1>
+            <span class="text-sm text-gray-600">19 / 20</span>
+        </div>
+
+        <div class="flex-1 flex flex-col justify-center">
+            <h2 class="text-3xl font-bold mb-2 text-center">不用从零造轮子，<span class="gradient-text-green">用好现有 AI 工具</span></h2>
+            <p class="text-gray-500 text-sm text-center mb-6">理解原理后，你可以用 Cursor 直接实现测试提效</p>
+
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <!-- 梯度一 -->
+                <div class="card-glass rounded-2xl p-4 border border-green-500/20">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="badge bg-green-500/20 text-green-300">今天就能用</div>
+                    </div>
+                    <h3 class="text-base font-bold text-green-300 mb-3">用 Cursor 做测试</h3>
+                    <div class="space-y-2">
+                        <div class="bg-green-500/5 border border-green-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-terminal text-green-400 mr-1"></i> "读 api/user.py，生成 pytest 用例"
+                        </div>
+                        <div class="bg-green-500/5 border border-green-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-bug text-green-400 mr-1"></i> "运行测试，失败的自动修复"
+                        </div>
+                        <div class="bg-green-500/5 border border-green-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-code-branch text-green-400 mr-1"></i> "看 git diff，补回归测试"
+                        </div>
+                        <div class="bg-green-500/5 border border-green-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-file-alt text-green-400 mr-1"></i> 用 .cursor/rules 固化测试标准
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 梯度二 -->
+                <div class="card-glass rounded-2xl p-4 border border-blue-500/20">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="badge bg-blue-500/20 text-blue-300">2-4 周</div>
+                    </div>
+                    <h3 class="text-base font-bold text-blue-300 mb-3">连接测试工具链</h3>
+                    <div class="space-y-2">
+                        <div class="bg-blue-500/5 border border-blue-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-plug text-blue-400 mr-1"></i> MCP 连 Jira：需求 → 用例
+                        </div>
+                        <div class="bg-blue-500/5 border border-blue-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-plug text-blue-400 mr-1"></i> MCP 连 Jenkins：一句话跑流水线
+                        </div>
+                        <div class="bg-blue-500/5 border border-blue-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-plug text-blue-400 mr-1"></i> MCP 连数据库：自动造测试数据
+                        </div>
+                        <div class="bg-blue-500/5 border border-blue-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-plug text-blue-400 mr-1"></i> Dify/Coze 搭建自动化 Agent
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 梯度三 -->
+                <div class="card-glass rounded-2xl p-4 border border-purple-500/20">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="badge bg-purple-500/20 text-purple-300">1 个月+</div>
+                    </div>
+                    <h3 class="text-base font-bold text-purple-300 mb-3">自己写 Tools（高阶）</h3>
+                    <div class="space-y-2">
+                        <div class="bg-purple-500/5 border border-purple-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-code text-purple-400 mr-1"></i> 封装公司内部 API
+                        </div>
+                        <div class="bg-purple-500/5 border border-purple-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-code text-purple-400 mr-1"></i> 自定义测试框架集成
+                        </div>
+                        <div class="bg-purple-500/5 border border-purple-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-code text-purple-400 mr-1"></i> 构建团队专属测试 Agent
+                        </div>
+                        <div class="bg-purple-500/5 border border-purple-500/15 rounded-lg p-2.5 text-xs text-gray-300">
+                            <i class="fas fa-code text-purple-400 mr-1"></i> 就是今天课上学的能力
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-glass rounded-2xl p-4 border border-yellow-500/30 max-w-4xl mx-auto">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-lightbulb text-yellow-400 text-xl"></i>
+                    <div>
+                        <p class="text-sm text-gray-200 font-semibold">关键认知</p>
+                        <p class="text-xs text-gray-400">今天学的原理不是让你从零造轮子 —— 而是让你<span class="text-white font-semibold">理解 Cursor/Claude 在幕后做了什么</span>，这样你才能更好地指挥它们为你测试提效。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Slide 20: Take-away & 收尾 -->
+    <!-- ============================================================ -->
+    <div class="slide flex-col items-center justify-center relative" id="slide-20">
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-cyan-500/15 rounded-full blur-3xl"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-white/[0.03] rounded-full"></div>
+        </div>
+
+        <div class="absolute top-8 left-12 text-sm text-gray-500"><i class="fas fa-flag-checkered mr-2"></i>课程总结</div>
+        <div class="absolute top-8 right-12 text-sm text-gray-600">20 / 20</div>
+
+        <div class="relative z-10 flex flex-col items-center max-w-5xl">
+            <h2 class="text-3xl font-bold mb-2 text-center">今天的 <span class="gradient-text">4 个核心 Take-away</span></h2>
+            <p class="text-gray-500 text-sm mb-8">带回家的 4 句话</p>
+
+            <div class="grid grid-cols-2 gap-4 w-full mb-8">
+                <div class="card-glass rounded-xl p-4 border-l-4 border-purple-500/60 flex items-start gap-3">
+                    <i class="fas fa-check-circle text-purple-400 text-xl mt-0.5"></i>
+                    <div>
+                        <p class="text-sm text-gray-200">Agent = LLM + Tools，<span class="text-purple-300 font-semibold">Function Calling 是连接 AI 与世界的桥</span></p>
+                    </div>
+                </div>
+                <div class="card-glass rounded-xl p-4 border-l-4 border-blue-500/60 flex items-start gap-3">
+                    <i class="fas fa-check-circle text-blue-400 text-xl mt-0.5"></i>
+                    <div>
+                        <p class="text-sm text-gray-200">LLM <span class="text-blue-300 font-semibold">不执行函数</span>，只生成调用请求，安全可控</p>
+                    </div>
+                </div>
+                <div class="card-glass rounded-xl p-4 border-l-4 border-cyan-500/60 flex items-start gap-3">
+                    <i class="fas fa-check-circle text-cyan-400 text-xl mt-0.5"></i>
+                    <div>
+                        <p class="text-sm text-gray-200">Tools 的 <span class="text-cyan-300 font-semibold">description 写得好不好</span>，直接决定 Agent 智不智能</p>
+                    </div>
+                </div>
+                <div class="card-glass rounded-xl p-4 border-l-4 border-green-500/60 flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-400 text-xl mt-0.5"></i>
+                    <div>
+                        <p class="text-sm text-gray-200">测试同学的核心价值：<span class="gradient-text-green font-semibold">把测试领域的"工具"封装好，喂给 Agent</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-glass rounded-2xl p-6 border border-purple-500/30 max-w-3xl w-full mb-8">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="badge bg-purple-500/20 text-purple-300">下节预告</div>
+                    <h3 class="text-base font-bold text-gray-100">第四讲：从 FC 到 Multi-Agent</h3>
+                </div>
+                <p class="text-xs text-gray-500 mb-3">构建你的第一个测试 Agent</p>
+                <div class="grid grid-cols-3 gap-3 text-xs">
+                    <div class="bg-purple-500/5 rounded-lg p-2.5 text-center border border-purple-500/15">
+                        <i class="fas fa-sync text-purple-400 mb-1"></i>
+                        <div class="text-gray-300">ReAct 决策循环</div>
+                    </div>
+                    <div class="bg-purple-500/5 rounded-lg p-2.5 text-center border border-purple-500/15">
+                        <i class="fas fa-database text-purple-400 mb-1"></i>
+                        <div class="text-gray-300">长短期记忆机制</div>
+                    </div>
+                    <div class="bg-purple-500/5 rounded-lg p-2.5 text-center border border-purple-500/15">
+                        <i class="fas fa-users-gear text-purple-400 mb-1"></i>
+                        <div class="text-gray-300">多 Agent 协作</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <p class="text-3xl font-bold mb-2">
+                    Q & A <span class="text-gray-500 text-xl font-normal">现场答疑</span>
+                </p>
+                <p class="text-gray-500 text-sm">让 AI 真正成为你的<span class="gradient-text font-bold"> 测试合伙人 </span></p>
+            </div>
+
+            <div class="mt-8 flex items-center gap-3 text-xs text-gray-600">
+                <i class="fas fa-graduation-cap text-purple-400"></i>
+                <span>研发测试部 · AI 测试种子计划 · 第三讲</span>
+                <span class="text-gray-700">|</span>
+                <i class="fas fa-heart text-pink-400"></i>
+                <span>感谢聆听</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide Navigation Dots -->
+    <div class="slide-nav" id="slide-nav"></div>
+
+</div>
+
+<script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const navContainer = document.getElementById('slide-nav');
+    const totalSlides = slides.length;
+
+    for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot' + (i === 0 ? ' active' : '');
+        dot.addEventListener('click', () => goToSlide(i));
+        navContainer.appendChild(dot);
+    }
+
+    function goToSlide(index) {
+        if (index < 0 || index >= totalSlides) return;
+        slides[currentSlide].classList.remove('active');
+        currentSlide = index;
+        slides[currentSlide].classList.add('active');
+        updateNav();
+    }
+
+    function changeSlide(dir) {
+        goToSlide(currentSlide + dir);
+    }
+
+    function updateNav() {
+        navContainer.querySelectorAll('.dot').forEach((d, i) => {
+            d.classList.toggle('active', i === currentSlide);
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); changeSlide(1); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); changeSlide(-1); }
+        if (e.key === 'Home') { e.preventDefault(); goToSlide(0); }
+        if (e.key === 'End') { e.preventDefault(); goToSlide(totalSlides - 1); }
+    });
+</script>
+
+</body>
+</html>
